@@ -1,0 +1,51 @@
+{
+  "success": true,
+  "data": {
+    "id": "0cb2e685-f985-40ef-8b48-9afc2346d022",
+    "name": "Cyprus vs Austria, 1st T20I, Austria tour of Cyprus 2026",
+    "matchType": "t20",
+    "status": "Cyprus won by 48 runs",
+    "venue": "Happy Valley Ground, Episkopi",
+    "date": "2026-03-14",
+    "dateTimeGMT": "2026-03-14T00:00:00",
+    "teams": [
+      "Cyprus",
+      "Austria"
+    ],
+    "teamInfo": [
+      {
+        "name": "Austria",
+        "shortname": "AUT",
+        "img": "https://g.cricapi.com/iapi/581-637867646191086862.webp?w=48"
+      },
+      {
+        "name": "Cyprus",
+        "shortname": "CYP",
+        "img": "https://g.cricapi.com/iapi/597-637872833850554962.webp?w=48"
+      }
+    ],
+    "score": [
+      {
+        "r": 174,
+        "w": 9,
+        "o": 20,
+        "inning": "Cyprus Inning 1"
+      },
+      {
+        "r": 126,
+        "w": 10,
+        "o": 19.2,
+        "inning": "Austria Inning 1"
+      }
+    ],
+    "tossWinner": "austria",
+    "tossChoice": "bowl",
+    "matchWinner": "Cyprus",
+    "series_id": "a8434275-93d7-4c07-9d0d-0d6ef271ff10",
+    "fantasyEnabled": false,
+    "bbbEnabled": false,
+    "hasSquad": false,
+    "matchStarted": true,
+    "matchEnded": true
+  }
+}

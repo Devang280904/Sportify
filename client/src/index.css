@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface text-txt-primary font-sans antialiased;
+  }
+  
+  * {
+    @apply box-border;
+  }
+  
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-surface;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-txt-muted rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-txt-secondary;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 
+           focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 
+           disabled:cursor-not-allowed transform active:scale-95;
+  }
+  
+  .btn-primary {
+    @apply btn bg-primary text-white hover:bg-primary-light focus:ring-primary;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-secondary text-white hover:bg-secondary-dark focus:ring-secondary;
+  }
+  
+  .btn-success {
+    @apply btn bg-accent text-white hover:bg-accent-dark focus:ring-accent;
+  }
+  
+  .btn-danger {
+    @apply btn bg-danger text-white hover:bg-danger-dark focus:ring-danger;
+  }
+  
+  .btn-warning {
+    @apply btn bg-warning text-white hover:bg-warning-dark focus:ring-warning;
+  }
+  
+  .btn-outline {
+    @apply btn border-2 border-primary text-primary hover:bg-primary hover:text-white;
+  }
+  
+  .card {
+    @apply bg-surface-card rounded-xl shadow-card p-6 transition-shadow duration-200 
+           hover:shadow-card-hover border border-surface-border;
+  }
+  
+  .input {
+    @apply w-full px-4 py-2.5 rounded-lg border border-surface-border bg-white 
+           text-txt-primary placeholder-txt-muted focus:outline-none focus:ring-2 
+           focus:ring-primary focus:border-transparent transition-all duration-200;
+  }
+  
+  .label {
+    @apply block text-sm font-medium text-txt-secondary mb-1.5;
+  }
+  
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .badge-live {
+    @apply badge bg-accent/10 text-accent;
+  }
+  
+  .badge-scheduled {
+    @apply badge bg-secondary/10 text-secondary;
+  }
+  
+  .badge-completed {
+    @apply badge bg-txt-muted/10 text-txt-secondary;
+  }
+}

@@ -1,0 +1,124 @@
+const Tournament = require('../models/Tournament');
+const { getCache, setCache, delCache } = require('../config/redis');
+
+// @desc    Create tournament
+// @route   POST /api/tournaments
+exports.createTournament = async (req, res) => {
+  try {
+    const { name, startDate, endDate, status } = req.body;
+    const tournament = await Tournament.create({
+      name,
+      startDate,
+      endDate,
+      status: status || 'upcoming',
+      organizerId: req.user.id,
+    });
+    await delCache('tournaments:all');
+    res.status(201).json({ success: true, data: tournament });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get all tournaments
+// @route   GET /api/tournaments
+exports.getTournaments = async (req, res) => {
+  try {
+    const cached = await getCache('tournaments:all');
+    if (cached) {
+      return res.json({ success: true, data: cached, cached: true });
+    }
+    const tournaments = await Tournament.find()
+      .populate('organizerId', 'name email')
+      .populate('teams', 'teamName')
+      .sort({ createdAt: -1 });
+    await setCache('tournaments:all', tournaments, 300);
+    res.json({ success: true, data: tournaments });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get single tournament
+// @route   GET /api/tournaments/:id
+exports.getTournament = async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id)
+      .populate('organizerId', 'name email')
+      .populate({ path: 'teams', populate: { path: 'players' } });
+    if (!tournament) {
+      return res.status(404).json({ success: false, message: 'Tournament not found' });
+    }
+    res.json({ success: true, data: tournament });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Update tournament
+// @route   PUT /api/tournaments/:id
+exports.updateTournament = async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+    if (!tournament) {
+      return res.status(404).json({ success: false, message: 'Tournament not found' });
+    }
+    if (tournament.organizerId.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+    const updated = await Tournament.findByIdAndUpdate(req.params.id, req.body, {
+      new: true, runValidators: true,
+    });
+    await delCache('tournaments:all');
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Delete tournament
+// @route   DELETE /api/tournaments/:id
+exports.deleteTournament = async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+    if (!tournament) {
+      return res.status(404).json({ success: false, message: 'Tournament not found' });
+    }
+
+    // Verify ownership or admin
+    if (tournament.organizerId.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to delete this tournament' });
+    }
+
+    const mongoose = require('mongoose');
+    const Match = mongoose.model('Match');
+    const Team = mongoose.model('Team');
+    const ScoreRecord = mongoose.model('ScoreRecord');
+
+    // Find all matches associated with this tournament
+    const matches = await Match.find({ tournamentId: req.params.id });
+    const matchIds = matches.map(m => m._id);
+
+    // Delete all ScoreRecords associated with those matches
+    if (matchIds.length > 0) {
+      await ScoreRecord.deleteMany({ matchId: { $in: matchIds } });
+    }
+
+    // Delete all Matches
+    await Match.deleteMany({ tournamentId: req.params.id });
+
+    // Delete all Teams
+    await Team.deleteMany({ tournamentId: req.params.id });
+
+    // Finally, delete the Tournament
+    await Tournament.findByIdAndDelete(req.params.id);
+    
+    // Clear caches
+    await delCache('tournaments:all');
+    await delCache(`points:${req.params.id}`);
+
+    res.json({ success: true, message: 'Tournament and all associated data deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

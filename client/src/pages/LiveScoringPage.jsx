@@ -96,6 +96,41 @@ const LiveScoringPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {/* Toss Information (if available) */}
+      {match.toss?.winnerId && (
+        <div className="card bg-gradient-to-r from-accent/20 to-success/20 border-2 border-accent">
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-xs text-txt-muted mb-1">Coin Result</p>
+              <p className="text-2xl font-bold capitalize text-accent">{match.toss?.coinResult}</p>
+            </div>
+            <div>
+              <p className="text-xs text-txt-muted mb-1">Toss Winner</p>
+              <p className="text-sm font-bold text-txt-primary">
+                {match.toss?.winnerId === match.team1Id?._id
+                  ? match.team1Id?.teamName
+                  : match.team2Id?.teamName}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-txt-muted mb-1">Decision</p>
+              <p className="text-sm font-bold text-success capitalize">{match.toss?.decision}</p>
+            </div>
+          </div>
+          {match.battingTeamId && (
+            <div className="mt-3 pt-3 border-t border-accent/30">
+              <p className="text-xs text-txt-muted text-center">
+                ⚾ Currently Batting: <span className="font-bold text-txt-primary">
+                  {match.battingTeamId === match.team1Id?._id
+                    ? match.team1Id?.teamName
+                    : match.team2Id?.teamName}
+                </span>
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Match Header */}
       <div className="card bg-gradient-to-r from-primary to-primary-light text-white">
         <div className="flex items-center justify-between mb-2">

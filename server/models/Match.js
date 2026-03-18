@@ -27,10 +27,41 @@ const matchSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['scheduled', 'live', 'completed'],
+    enum: ['scheduled', 'toss-pending', 'live', 'completed'],
     default: 'scheduled',
   },
   winnerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Team',
+    default: null,
+  },
+  toss: {
+    winnerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Team',
+      default: null,
+    },
+    decision: {
+      type: String,
+      enum: ['bat', 'bowl'],
+      default: null,
+    },
+    coinResult: {
+      type: String,
+      enum: ['heads', 'tails'],
+      default: null,
+    },
+    chosenTeamId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Team',
+      default: null,
+    },
+    completedAt: {
+      type: Date,
+      default: null,
+    },
+  },
+  battingTeamId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Team',
     default: null,

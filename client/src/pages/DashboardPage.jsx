@@ -12,12 +12,18 @@ const DashboardPage = () => {
   const { user, canManage } = useAuth();
   const { socket } = useSocket();
   const [liveMatches, setLiveMatches] = useState([]);
+  const [scheduledMatches, setScheduledMatches] = useState([]);
   const [recentMatches, setRecentMatches] = useState([]);
   const [globalCompletedMatches, setGlobalCompletedMatches] = useState([]);
   const [stats, setStats] = useState({ tournaments: 0, teams: 0, matches: 0 });
   const [scores, setScores] = useState({});
   const [loading, setLoading] = useState(true);
   const [isGlobalMock, setIsGlobalMock] = useState(false);
+
+  const handleDeleteMatch = (deletedMatchId) => {
+    setScheduledMatches(prev => prev.filter(m => m._id !== deletedMatchId));
+    setStats(prev => ({ ...prev, matches: prev.matches - 1 }));
+  };
 
   useEffect(() => {
     fetchData();
@@ -35,7 +41,15 @@ const DashboardPage = () => {
           : prev[data.matchId]
       }));
     });
-    return () => socket.off('scoreUpdated');
+
+    socket.on('matchDeleted', (data) => {
+      handleDeleteMatch(data.matchId);
+    });
+
+    return () => {
+      socket.off('scoreUpdated');
+      socket.off('matchDeleted');
+    };
   }, [socket]);
 
   const fetchData = async () => {
@@ -48,8 +62,11 @@ const DashboardPage = () => {
 
       const allMatches = matchesRes.data.data;
       setLiveMatches(allMatches.filter(m => m.status === 'live'));
+      const upcomingMatches = allMatches.filter(m => m.status === 'scheduled').sort((a, b) => new Date(a.matchDate) - new Date(b.matchDate));
+      setScheduledMatches(upcomingMatches);
       setRecentMatches(allMatches.filter(m => m.status === 'completed').slice(0, 6));
       setGlobalCompletedMatches(globalCompletedRes.data.data || []);
+      
       setIsGlobalMock(globalCompletedRes.data.isMock || false);
 
       setStats({
@@ -204,6 +221,21 @@ const DashboardPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {liveMatches.map(match => (
                 <ScoreCard key={match._id} match={match} scores={scores[match._id] || []} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Scheduled/Upcoming Matches */}
+        {scheduledMatches.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center space-x-3 mb-3">
+              <h3 className="text-md font-bold text-txt-secondary">Upcoming Matches</h3>
+              <span className="badge bg-secondary/10 text-secondary text-xs font-bold">{scheduledMatches.length}</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {scheduledMatches.map(match => (
+                <ScoreCard key={match._id} match={match} scores={scores[match._id] || []} onDelete={handleDeleteMatch} />
               ))}
             </div>
           </div>

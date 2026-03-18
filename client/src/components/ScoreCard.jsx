@@ -1,7 +1,13 @@
 import LiveIndicator from './LiveIndicator';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
+import { HiOutlineTrash } from 'react-icons/hi';
+import { useState } from 'react';
 
-const ScoreCard = ({ match, scores }) => {
+const ScoreCard = ({ match, scores, onDelete }) => {
+  const { canManage } = useAuth();
+  const [deleting, setDeleting] = useState(false);
   const team1Score = scores?.find(s => s.teamId === match.team1Id?._id);
   const team2Score = scores?.find(s => s.teamId === match.team2Id?._id);
 
@@ -11,23 +17,65 @@ const ScoreCard = ({ match, scores }) => {
     completed: 'border-surface-border',
   };
 
+  // Determine navigation link based on match status and user role
+  const getMatchLink = () => {
+    if (canManage() && (match.status === 'scheduled' || match.status === 'live')) {
+      return `/match/${match._id}/score`; // Live Scoring Page
+    }
+    if (match.status === 'live') {
+      return `/match/${match._id}/view`; // Live Viewer for non-organizers
+    }
+    return `/match/${match._id}`; // Default Viewer Page
+  };
+
+  const handleDelete = async (e) => {
+    e.preventDefault();
+    if (!window.confirm('Are you sure you want to delete this match? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      await api.delete(`/matches/${match._id}`);
+      if (onDelete) onDelete(match._id);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete match');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <Link
-      to={match.status === 'live' ? `/match/${match._id}/view` : `/match/${match._id}`}
+      to={getMatchLink()}
       className={`card border-l-4 ${statusColors[match.status] || 'border-surface-border'} 
-                  hover:shadow-card-lg transition-all duration-300 block animate-slide-up`}
+                  hover:shadow-card-lg transition-all duration-300 block animate-slide-up relative group`}
     >
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs text-txt-muted font-medium">
           {match.tournamentId?.name || 'Tournament'}
         </span>
-        {match.status === 'live' && <LiveIndicator />}
-        {match.status === 'scheduled' && (
-          <span className="badge-scheduled">Upcoming</span>
-        )}
-        {match.status === 'completed' && (
-          <span className="badge-completed">Completed</span>
-        )}
+        <div className="flex items-center gap-2">
+          {match.status === 'live' && <LiveIndicator />}
+          {match.status === 'scheduled' && (
+            <span className="badge-scheduled">Upcoming</span>
+          )}
+          {match.status === 'completed' && (
+            <span className="badge-completed">Completed</span>
+          )}
+
+          {/* Delete Button - Only for Scheduled Matches */}
+          {canManage() && match.status === 'scheduled' && (
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-danger hover:bg-danger/10 p-1.5 rounded-lg ml-2"
+              title="Delete match"
+            >
+              <HiOutlineTrash className="text-lg" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="space-y-3">

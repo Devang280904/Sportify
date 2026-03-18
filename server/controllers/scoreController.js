@@ -14,8 +14,8 @@ exports.updateScore = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Match not found' });
     }
 
-    // Set match to live if scheduled
-    if (match.status === 'scheduled') {
+    // Set match to live if scheduled or toss-pending
+    if (match.status === 'scheduled' || match.status === 'toss-pending') {
       match.status = 'live';
       await match.save();
       const io = req.app.get('io');

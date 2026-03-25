@@ -175,3 +175,49 @@ exports.deleteTeam = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+// @desc    Upload players to team
+// @route   POST /api/teams/:id/players/upload
+exports.uploadPlayers = async (req, res) => {
+  try {
+    const team = await Team.findById(req.params.id);
+    if (!team) {
+      return res.status(404).json({ success: false, message: 'Team not found' });
+    }
+
+    const { players } = req.body;
+    if (!players || !Array.isArray(players)) {
+      return res.status(400).json({ success: false, message: 'Invalid player data' });
+    }
+
+    if (team.players.length + players.length > 11) {
+      return res.status(400).json({ success: false, message: `Uploading ${players.length} players would exceed the 11-player limit (Current: ${team.players.length})` });
+    }
+
+    const newPlayers = [];
+    for (const pData of players) {
+      const { name, role, battingStyle, bowlingStyle } = pData;
+      
+      // Basic validation
+      if (!name || !role) {
+        return res.status(400).json({ success: false, message: 'Name and role are required for all players' });
+      }
+
+      const player = await Player.create({
+        name,
+        role: role.toLowerCase(),
+        battingStyle: (battingStyle || 'right-hand').toLowerCase(),
+        bowlingStyle: (bowlingStyle || 'NA').toLowerCase(),
+        teamId: team._id,
+      });
+      newPlayers.push(player._id);
+    }
+
+    team.players.push(...newPlayers);
+    team.playerNumber = team.players.length;
+    await team.save();
+
+    res.status(201).json({ success: true, message: `${players.length} players uploaded successfully` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

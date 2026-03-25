@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { HiOutlinePlus, HiOutlineTrash, HiOutlineX } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineTrash, HiOutlineX, HiOutlineDownload, HiOutlineUpload } from 'react-icons/hi';
 
 const TeamDetailPage = () => {
   const { id } = useParams();
@@ -53,6 +53,57 @@ const TeamDetailPage = () => {
     }
   };
 
+  const handleDownloadTemplate = () => {
+    const headers = 'name,role,battingStyle,bowlingStyle\n';
+    const example = 'Virat Kohli,batsman,right-hand,NA\nJasprit Bumrah,bowler,right-hand,pace';
+    const blob = new Blob([headers + example], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'player_template.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target.result;
+      const lines = text.split('\n');
+      const players = [];
+
+      // Skip header
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const [name, role, battingStyle, bowlingStyle] = line.split(',').map(s => s?.trim());
+        if (name && role) {
+          players.push({ name, role, battingStyle, bowlingStyle });
+        }
+      }
+
+      if (players.length === 0) {
+        return alert('No valid player data found in CSV');
+      }
+
+      setSaving(true);
+      try {
+        await api.post(`/teams/${id}/players/upload`, { players });
+        fetchTeam();
+        alert(`${players.length} players uploaded successfully`);
+      } catch (err) {
+        alert(err.response?.data?.message || 'Failed to upload players');
+      } finally {
+        setSaving(false);
+        e.target.value = ''; // Reset file input
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const roleColors = {
     batsman: 'bg-primary/10 text-primary',
     bowler: 'bg-accent/10 text-accent',
@@ -91,11 +142,22 @@ const TeamDetailPage = () => {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-txt-primary">Squad</h2>
-          {user && team.players.length < 11 && (
-            <button onClick={() => setShowModal(true)} className="btn-primary inline-flex items-center space-x-2">
-              <HiOutlinePlus /> <span>Add Player</span>
+          <div className="flex items-center space-x-2">
+            <button onClick={handleDownloadTemplate} className="btn-outline inline-flex items-center space-x-2 text-sm py-1.5">
+              <HiOutlineDownload /> <span>Template</span>
             </button>
-          )}
+            {user && team.players.length < 11 && (
+              <>
+                <label className="btn-secondary inline-flex items-center space-x-2 text-sm py-1.5 cursor-pointer">
+                  <HiOutlineUpload /> <span>Upload CSV</span>
+                  <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+                </label>
+                <button onClick={() => setShowModal(true)} className="btn-primary inline-flex items-center space-x-2 text-sm py-1.5">
+                  <HiOutlinePlus /> <span>Add Player</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {team.players?.length > 0 ? (

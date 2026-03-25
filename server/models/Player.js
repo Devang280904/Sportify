@@ -19,12 +19,12 @@ const playerSchema = new mongoose.Schema({
   },
   battingStyle: {
     type: String,
-    enum: ['right-hand', 'left-hand'],
-    default: 'right-hand',
+    enum: ['Right handed', 'Left handed'],
+    default: 'Right handed',
   },
   bowlingStyle: {
     type: String,
-    enum: ['pace', 'spin', 'NA'],
+    enum: ['faster', 'spiner', 'NA'],
     default: 'NA',
   },
   totalRuns: { type: Number, default: 0 },

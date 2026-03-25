@@ -38,7 +38,7 @@ const TeamDetailPage = () => {
 
   const handleDownloadTemplate = () => {
     const headers = 'name,role,battingStyle,bowlingStyle\n';
-    const example = 'Virat Kohli,batsman,right-hand,NA\nJasprit Bumrah,bowler,right-hand,pace';
+    const example = 'Virat Kohli,batsman,Right handed,NA\nJasprit Bumrah,bowler,Right handed,faster\nMS Dhoni,wicketkeeper,Right handed,NA\nKuldeep Yadav,bowler,Left handed,spiner';
     const blob = new Blob([headers + example], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');

@@ -202,11 +202,22 @@ exports.uploadPlayers = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Name and role are required for all players' });
       }
 
+      // Robust mapping for batting style
+      let bStyle = 'Right handed';
+      if (battingStyle && battingStyle.toLowerCase().includes('left')) bStyle = 'Left handed';
+      else if (battingStyle && battingStyle.toLowerCase().includes('right')) bStyle = 'Right handed';
+
+      // Robust mapping for bowling style
+      let boStyle = 'NA';
+      const boLower = (bowlingStyle || '').toLowerCase();
+      if (boLower.includes('fast') || boLower.includes('pace')) boStyle = 'faster';
+      else if (boLower.includes('spin')) boStyle = 'spiner';
+
       const player = await Player.create({
         name,
         role: role.toLowerCase(),
-        battingStyle: (battingStyle || 'right-hand').toLowerCase(),
-        bowlingStyle: (bowlingStyle || 'NA').toLowerCase(),
+        battingStyle: bStyle,
+        bowlingStyle: boStyle,
         teamId: team._id,
       });
       newPlayers.push(player._id);

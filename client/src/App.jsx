@@ -19,8 +19,6 @@ import MatchSummaryPage from './pages/MatchSummaryPage';
 import PointsTablePage from './pages/PointsTablePage';
 import FixturesPage from './pages/FixturesPage';
 import ProfilePage from './pages/ProfilePage';
-import RealCricketPage from './pages/RealCricketPage';
-import GlobalMatchPage from './pages/GlobalMatchPage';
 
 function App() {
   return (
@@ -61,8 +59,6 @@ function App() {
               <Route path="/live" element={<FixturesPage />} />
               <Route path="/fixtures" element={<FixturesPage />} />
               <Route path="/points" element={<PointsTablePage />} />
-              <Route path="/global-cricket" element={<RealCricketPage />} />
-              <Route path="/global-match/:id" element={<GlobalMatchPage />} />
               
               {/* Profile */}
               <Route path="/profile" element={<ProfilePage />} />

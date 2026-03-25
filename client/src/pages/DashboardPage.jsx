@@ -5,7 +5,7 @@ import { useSocket } from '../context/SocketContext';
 import api from '../services/api';
 import ScoreCard from '../components/ScoreCard';
 import LiveIndicator from '../components/LiveIndicator';
-import { MdSportsCricket, MdOutlinePublic } from 'react-icons/md';
+import { MdSportsCricket } from 'react-icons/md';
 import { HiOutlinePlus, HiOutlineCollection, HiOutlineUserGroup } from 'react-icons/hi';
 
 const DashboardPage = () => {
@@ -14,11 +14,9 @@ const DashboardPage = () => {
   const [liveMatches, setLiveMatches] = useState([]);
   const [scheduledMatches, setScheduledMatches] = useState([]);
   const [recentMatches, setRecentMatches] = useState([]);
-  const [globalCompletedMatches, setGlobalCompletedMatches] = useState([]);
   const [stats, setStats] = useState({ tournaments: 0, teams: 0, matches: 0 });
   const [scores, setScores] = useState({});
   const [loading, setLoading] = useState(true);
-  const [isGlobalMock, setIsGlobalMock] = useState(false);
 
   const handleDeleteMatch = (deletedMatchId) => {
     setScheduledMatches(prev => prev.filter(m => m._id !== deletedMatchId));
@@ -54,10 +52,9 @@ const DashboardPage = () => {
 
   const fetchData = async () => {
     try {
-      const [matchesRes, tournamentsRes, globalCompletedRes] = await Promise.all([
+      const [matchesRes, tournamentsRes] = await Promise.all([
         api.get('/matches'),
-        api.get('/tournaments'),
-        api.get('/real-cricket/completed').catch(() => ({ data: { data: [] } }))
+        api.get('/tournaments')
       ]);
 
       const allMatches = matchesRes.data.data;
@@ -65,9 +62,6 @@ const DashboardPage = () => {
       const upcomingMatches = allMatches.filter(m => m.status === 'scheduled').sort((a, b) => new Date(a.matchDate) - new Date(b.matchDate));
       setScheduledMatches(upcomingMatches);
       setRecentMatches(allMatches.filter(m => m.status === 'completed').slice(0, 6));
-      setGlobalCompletedMatches(globalCompletedRes.data.data || []);
-      
-      setIsGlobalMock(globalCompletedRes.data.isMock || false);
 
       setStats({
         tournaments: tournamentsRes.data.data.length,
@@ -144,57 +138,6 @@ const DashboardPage = () => {
             <MdSportsCricket className="text-4xl text-white/30" />
           </div>
         </div>
-      </div>
-
-      {/* GLOBAL CRICKET SECION */}
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
-              <MdOutlinePublic className="text-2xl text-accent" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-txt-primary">Global Cricket Results</h2>
-              <p className="text-xs text-txt-muted text-nowrap hidden sm:block">Recent international & professional match results</p>
-            </div>
-            {isGlobalMock && (
-              <span className="text-[10px] font-bold bg-amber-500/20 text-amber-600 px-2 py-0.5 rounded-full border border-amber-500/30">
-                MOCK DATA (API BLOCKED)
-              </span>
-            )}
-          </div>
-          <Link to="/global-cricket" className="btn-secondary text-sm">View All Results →</Link>
-        </div>
-
-        {globalCompletedMatches.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {globalCompletedMatches.slice(0, 3).map((match, idx) => (
-              <div key={match.id} className="card border-l-4 border-l-accent hover:-translate-y-1 transition-transform animate-slide-up" style={{ animationDelay: `${idx * 50}ms` }}>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs font-semibold text-txt-muted uppercase">{match.matchType || 'Match'}</span>
-                  <span className="text-xs font-bold text-txt-secondary">COMPLETED</span>
-                </div>
-                <p className="text-sm font-bold text-txt-primary truncate mb-3">{match.name}</p>
-                <div className="flex justify-between text-center items-center">
-                  <div className="flex flex-col items-center">
-                    <span className="font-bold text-txt-primary">{match.teamInfo?.[0]?.shortname || match.teams?.[0]}</span>
-                    {match.score?.[0] && <span className="font-bold">{match.score[0].r}/{match.score[0].w}</span>}
-                  </div>
-                  <span className="text-xs font-bold text-txt-muted">VS</span>
-                  <div className="flex flex-col items-center">
-                    <span className="font-bold text-txt-primary">{match.teamInfo?.[1]?.shortname || match.teams?.[1]}</span>
-                    {match.score?.[1] && <span className="font-bold">{match.score[1].r}/{match.score[1].w}</span>}
-                  </div>
-                </div>
-                <div className="mt-3 text-center text-xs text-accent font-medium truncate">{match.status}</div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="card text-center py-6 bg-surface-card border-dashed">
-            <p className="text-txt-muted text-sm">No recent global match results available.</p>
-          </div>
-        )}
       </div>
 
       <div className="border-t border-surface-border"></div>

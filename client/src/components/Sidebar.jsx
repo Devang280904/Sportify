@@ -9,7 +9,7 @@ import {
   HiOutlineEye,
   HiOutlineUser,
 } from 'react-icons/hi';
-import { MdSportsCricket, MdOutlinePublic } from 'react-icons/md';
+import { MdSportsCricket } from 'react-icons/md';
 
 const Sidebar = () => {
   const { user } = useAuth();
@@ -27,11 +27,6 @@ const Sidebar = () => {
         <NavLink to="/dashboard" className={linkClass}>
           <HiOutlineHome className="text-lg" />
           <span>Dashboard</span>
-        </NavLink>
-
-        <NavLink to="/global-cricket" className={linkClass}>
-          <MdOutlinePublic className="text-lg" />
-          <span>Global Cricket</span>
         </NavLink>
 
         <NavLink to="/tournaments" className={linkClass}>

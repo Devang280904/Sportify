@@ -13,7 +13,6 @@ const tournamentRoutes = require('./routes/tournamentRoutes');
 const teamRoutes = require('./routes/teamRoutes');
 const matchRoutes = require('./routes/matchRoutes');
 const scoreRoutes = require('./routes/scoreRoutes');
-const realCricketRoutes = require('./routes/realCricketRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -45,7 +44,6 @@ app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/matches', scoreRoutes);
-app.use('/api/real-cricket', realCricketRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

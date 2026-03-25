@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { HiOutlinePlus, HiOutlineX, HiOutlineTrash } from 'react-icons/hi';
 
 const TeamsPage = () => {
-  const { user, canManage, isAdmin } = useAuth();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const [teams, setTeams] = useState([]);
   const [tournaments, setTournaments] = useState([]);
@@ -64,11 +64,9 @@ const TeamsPage = () => {
   };
 
   const canDelete = (team) => {
-    if (isAdmin()) return true;
-    // Check if the current user is the organizer of the tournament this team belongs to
+    if (!user) return false;
     const tournament = tournaments.find(t => t._id === (team.tournamentId?._id || team.tournamentId));
-    if (canManage() && tournament?.organizerId === user?.id) return true;
-    return false;
+    return user._id === tournament?.organizerId?._id || user._id === tournament?.organizerId || user._id === team.createdBy;
   };
 
   if (loading) {
@@ -83,7 +81,7 @@ const TeamsPage = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-txt-primary">Teams</h1>
-        {canManage() && (
+        {user && (
           <button onClick={() => setShowModal(true)} className="btn-primary inline-flex items-center space-x-2">
             <HiOutlinePlus /> <span>New Team</span>
           </button>

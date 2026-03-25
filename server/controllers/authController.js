@@ -2,8 +2,8 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
 
-const generateToken = (id, role) => {
-  return jwt.sign({ id, role }, process.env.JWT_SECRET, {
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   });
 };
@@ -12,7 +12,7 @@ const generateToken = (id, role) => {
 // @route   POST /api/auth/signup
 exports.signup = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -23,10 +23,9 @@ exports.signup = async (req, res) => {
       name,
       email,
       password,
-      role: role || 'viewer',
     });
 
-    const token = generateToken(user._id, user.role);
+    const token = generateToken(user._id);
 
     res.status(201).json({
       success: true,
@@ -35,7 +34,6 @@ exports.signup = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role,
       },
     });
   } catch (error) {
@@ -85,7 +83,7 @@ exports.login = async (req, res) => {
     user.lastLogin = new Date();
     await user.save();
 
-    const token = generateToken(user._id, user.role);
+    const token = generateToken(user._id);
 
     res.json({
       success: true,
@@ -94,7 +92,6 @@ exports.login = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role,
       },
     });
   } catch (error) {
@@ -209,7 +206,7 @@ exports.resetPassword = async (req, res) => {
     user.lockedUntil = null;
     await user.save();
 
-    const token = generateToken(user._id, user.role);
+    const token = generateToken(user._id);
 
     res.json({
       success: true,
@@ -219,7 +216,6 @@ exports.resetPassword = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role,
       },
     });
   } catch (error) {

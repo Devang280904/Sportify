@@ -8,12 +8,11 @@ import {
   HiOutlineChartBar,
   HiOutlineEye,
   HiOutlineUser,
-  HiOutlineClipboardList,
 } from 'react-icons/hi';
 import { MdSportsCricket, MdOutlinePublic } from 'react-icons/md';
 
 const Sidebar = () => {
-  const { user, canManage, isAdmin } = useAuth();
+  const { user } = useAuth();
 
   const linkClass = ({ isActive }) =>
     `flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
@@ -35,24 +34,20 @@ const Sidebar = () => {
           <span>Global Cricket</span>
         </NavLink>
 
-        {canManage() && (
-          <>
-            <NavLink to="/tournaments" className={linkClass}>
-              <HiOutlineCollection className="text-lg" />
-              <span>Tournaments</span>
-            </NavLink>
+        <NavLink to="/tournaments" className={linkClass}>
+          <HiOutlineCollection className="text-lg" />
+          <span>Tournaments</span>
+        </NavLink>
 
-            <NavLink to="/teams" className={linkClass}>
-              <HiOutlineUserGroup className="text-lg" />
-              <span>Teams</span>
-            </NavLink>
+        <NavLink to="/teams" className={linkClass}>
+          <HiOutlineUserGroup className="text-lg" />
+          <span>Teams</span>
+        </NavLink>
 
-            <NavLink to="/matches/create" className={linkClass}>
-              <MdSportsCricket className="text-lg" />
-              <span>Create Match</span>
-            </NavLink>
-          </>
-        )}
+        <NavLink to="/matches/create" className={linkClass}>
+          <MdSportsCricket className="text-lg" />
+          <span>Create Match</span>
+        </NavLink>
 
         <NavLink to="/fixtures" className={linkClass}>
           <HiOutlineCalendar className="text-lg" />
@@ -68,13 +63,6 @@ const Sidebar = () => {
           <HiOutlineChartBar className="text-lg" />
           <span>Points Table</span>
         </NavLink>
-
-        {isAdmin() && (
-          <NavLink to="/admin" className={linkClass}>
-            <HiOutlineClipboardList className="text-lg" />
-            <span>Admin Panel</span>
-          </NavLink>
-        )}
 
         <div className="pt-4 mt-4 border-t border-surface-border">
           <NavLink to="/profile" className={linkClass}>

@@ -1,17 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const { createMatch, getMatches, getMatch, startToss, makeTossDecision, deleteMatch } = require('../controllers/matchController');
-const { protect, authorize } = require('../middlewares/auth');
+const { createMatch, getMatches, getMatch, updateMatch, startMatch, deleteMatch } = require('../controllers/matchController');
+const { getMatchSummary } = require('../controllers/scoreController');
+const { protect, isMatchOwner } = require('../middlewares/auth');
 
 router.route('/')
   .get(protect, getMatches)
-  .post(protect, authorize('organizer', 'admin'), createMatch);
+  .post(protect, createMatch);
 
 router.route('/:id')
   .get(protect, getMatch)
-  .delete(protect, authorize('organizer', 'admin'), deleteMatch);
+  .put(protect, isMatchOwner, updateMatch)
+  .delete(protect, isMatchOwner, deleteMatch);
 
-router.post('/:id/toss', protect, authorize('organizer', 'admin'), startToss);
-router.post('/:id/toss-decision', protect, authorize('organizer', 'admin'), makeTossDecision);
+router.post('/:id/start', protect, startMatch);
+router.get('/:id/summary', protect, getMatchSummary);
 
 module.exports = router;

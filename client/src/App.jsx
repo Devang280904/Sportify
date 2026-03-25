@@ -15,6 +15,7 @@ import TeamDetailPage from './pages/TeamDetailPage';
 import CreateMatchPage from './pages/CreateMatchPage';
 import LiveScoringPage from './pages/LiveScoringPage';
 import MatchViewerPage from './pages/MatchViewerPage';
+import MatchSummaryPage from './pages/MatchSummaryPage';
 import PointsTablePage from './pages/PointsTablePage';
 import FixturesPage from './pages/FixturesPage';
 import ProfilePage from './pages/ProfilePage';
@@ -42,34 +43,19 @@ function App() {
               <Route path="/dashboard" element={<DashboardPage />} />
               
               {/* Tournament Routes */}
-              <Route path="/tournaments" element={
-                <ProtectedRoute roles={['admin', 'organizer']}>
-                  <TournamentsPage />
-                </ProtectedRoute>
-              } />
+              <Route path="/tournaments" element={<TournamentsPage />} />
               <Route path="/tournaments/:id" element={<TournamentDetailPage />} />
 
               {/* Team Routes */}
-              <Route path="/teams" element={
-                <ProtectedRoute roles={['admin', 'organizer']}>
-                  <TeamsPage />
-                </ProtectedRoute>
-              } />
+              <Route path="/teams" element={<TeamsPage />} />
               <Route path="/teams/:id" element={<TeamDetailPage />} />
 
               {/* Match Routes */}
-              <Route path="/matches/create" element={
-                <ProtectedRoute roles={['admin', 'organizer']}>
-                  <CreateMatchPage />
-                </ProtectedRoute>
-              } />
+              <Route path="/matches/create" element={<CreateMatchPage />} />
               <Route path="/match/:id" element={<MatchViewerPage />} />
               <Route path="/match/:id/view" element={<MatchViewerPage />} />
-              <Route path="/match/:id/score" element={
-                <ProtectedRoute roles={['admin', 'organizer']}>
-                  <LiveScoringPage />
-                </ProtectedRoute>
-              } />
+              <Route path="/match/:id/summary" element={<MatchSummaryPage />} />
+              <Route path="/match/:id/score" element={<LiveScoringPage />} />
 
               {/* Viewer Routes */}
               <Route path="/live" element={<FixturesPage />} />

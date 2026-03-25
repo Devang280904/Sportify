@@ -63,8 +63,8 @@ exports.updateTournament = async (req, res) => {
     if (!tournament) {
       return res.status(404).json({ success: false, message: 'Tournament not found' });
     }
-    if (tournament.organizerId.toString() !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
+    if (tournament.organizerId.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'You cannot add or modify another user’s tournament/match.' });
     }
     const updated = await Tournament.findByIdAndUpdate(req.params.id, req.body, {
       new: true, runValidators: true,
@@ -85,9 +85,8 @@ exports.deleteTournament = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Tournament not found' });
     }
 
-    // Verify ownership or admin
-    if (tournament.organizerId.toString() !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Not authorized to delete this tournament' });
+    if (tournament.organizerId.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'You cannot add or modify another user’s tournament/match.' });
     }
 
     const mongoose = require('mongoose');

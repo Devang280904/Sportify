@@ -23,11 +23,7 @@ const userSchema = new mongoose.Schema({
     minlength: 6,
     select: false,
   },
-  role: {
-    type: String,
-    enum: ['admin', 'organizer', 'viewer'],
-    default: 'viewer',
-  },
+
   failedLoginAttempts: {
     type: Number,
     default: 0,

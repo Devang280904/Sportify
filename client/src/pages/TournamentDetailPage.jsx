@@ -6,7 +6,7 @@ import { HiOutlineCalendar, HiOutlineUserGroup } from 'react-icons/hi';
 
 const TournamentDetailPage = () => {
   const { id } = useParams();
-  const { canManage } = useAuth();
+  const { user } = useAuth();
   const [tournament, setTournament] = useState(null);
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,6 +51,7 @@ const TournamentDetailPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-txt-primary">{tournament.name}</h1>
+            <p className="text-sm text-txt-muted mt-1">Organized by <span className="font-semibold">{tournament.organizerId?.name}</span></p>
             <div className="flex items-center gap-4 mt-2 text-sm text-txt-secondary">
               <span className="flex items-center gap-1">
                 <HiOutlineCalendar />
@@ -70,7 +71,7 @@ const TournamentDetailPage = () => {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-txt-primary">Teams</h2>
-          {canManage() && (
+          {user && user.id === tournament.organizerId?._id && (
             <Link to={`/teams?tournamentId=${id}`} className="btn-secondary text-sm">Manage Teams</Link>
           )}
         </div>

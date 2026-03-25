@@ -9,7 +9,7 @@ import { MdSportsCricket, MdOutlinePublic } from 'react-icons/md';
 import { HiOutlinePlus, HiOutlineCollection, HiOutlineUserGroup } from 'react-icons/hi';
 
 const DashboardPage = () => {
-  const { user, canManage } = useAuth();
+  const { user } = useAuth();
   const { socket } = useSocket();
   const [liveMatches, setLiveMatches] = useState([]);
   const [scheduledMatches, setScheduledMatches] = useState([]);
@@ -107,7 +107,7 @@ const DashboardPage = () => {
           </h1>
           <p className="text-txt-secondary mt-1">Here's what's happening today</p>
         </div>
-        {canManage() && (
+        {user && (
           <Link to="/matches/create" className="btn-primary inline-flex items-center space-x-2">
             <HiOutlinePlus className="text-lg" />
             <span>Create Match</span>
@@ -257,7 +257,7 @@ const DashboardPage = () => {
             <div className="card text-center py-12">
               <MdSportsCricket className="text-5xl text-txt-muted mx-auto mb-3" />
               <p className="text-txt-muted">No matches yet. Get started by creating a local tournament!</p>
-              {canManage() && (
+              {user && (
                 <Link to="/tournaments" className="btn-primary inline-block mt-4">Create Tournament</Link>
               )}
             </div>

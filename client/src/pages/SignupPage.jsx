@@ -6,7 +6,7 @@ import { HiOutlineMail, HiOutlineLockClosed, HiOutlineUser } from 'react-icons/h
 
 const SignupPage = () => {
   const [formData, setFormData] = useState({
-    name: '', email: '', password: '', confirmPassword: '', role: 'viewer',
+    name: '', email: '', password: '', confirmPassword: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,7 +30,7 @@ const SignupPage = () => {
 
     setLoading(true);
     try {
-      await signup(formData.name, formData.email, formData.password, formData.role);
+      await signup({ name: formData.name, email: formData.email, password: formData.password });
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Signup failed.');
@@ -105,13 +105,7 @@ const SignupPage = () => {
               </div>
             </div>
 
-            <div>
-              <label className="label" htmlFor="role">Role</label>
-              <select id="role" name="role" value={formData.role} onChange={handleChange} className="input">
-                <option value="viewer">Viewer</option>
-                <option value="organizer">Organizer</option>
-              </select>
-            </div>
+
 
             <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base">
               {loading ? (

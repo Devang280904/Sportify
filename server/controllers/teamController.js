@@ -133,7 +133,7 @@ exports.deleteTeam = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Associated tournament not found' });
     }
 
-    if (tournament.organizerId.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (tournament.organizerId.toString() !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Not authorized to delete this team' });
     }
 

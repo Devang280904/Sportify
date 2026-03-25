@@ -32,13 +32,13 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
-  const signup = async (name, email, password, role) => {
-    const res = await api.post('/auth/signup', { name, email, password, role });
-    const { token: newToken, user: userData } = res.data;
+  const signup = async (userData) => {
+    const res = await api.post('/auth/signup', userData);
+    const { token: newToken, user: newUser } = res.data;
     localStorage.setItem('sportify_token', newToken);
-    localStorage.setItem('sportify_user', JSON.stringify(userData));
+    localStorage.setItem('sportify_user', JSON.stringify(newUser));
     setToken(newToken);
-    setUser(userData);
+    setUser(newUser);
     return res.data;
   };
 
@@ -49,15 +49,9 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  const isAdmin = () => user?.role === 'admin';
-  const isOrganizer = () => user?.role === 'organizer';
-  const isViewer = () => user?.role === 'viewer';
-  const canManage = () => isAdmin() || isOrganizer();
-
   return (
     <AuthContext.Provider value={{
       user, token, loading, login, signup, logout,
-      isAdmin, isOrganizer, isViewer, canManage,
     }}>
       {children}
     </AuthContext.Provider>

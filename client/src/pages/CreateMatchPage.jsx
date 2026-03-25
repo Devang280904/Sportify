@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { MdSportsCricket } from 'react-icons/md';
 
 const CreateMatchPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [tournaments, setTournaments] = useState([]);
   const [teams, setTeams] = useState([]);
   const [form, setForm] = useState({
-    tournamentId: '', team1Id: '', team2Id: '', matchDate: '', venue: '',
+    tournamentId: '', team1Id: '', team2Id: '', matchDate: '', venue: '', totalOvers: 20
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -19,8 +21,17 @@ const CreateMatchPage = () => {
   const currentDateTime = now.toISOString().slice(0, 16);
 
   useEffect(() => {
-    api.get('/tournaments').then(res => setTournaments(res.data.data)).catch(console.error);
-  }, []);
+    api.get('/tournaments')
+      .then(res => {
+        // Only allow creating matches in tournaments owned by the current user
+        const ownedTournaments = res.data.data.filter(t => {
+          const orgId = t.organizerId?._id || t.organizerId;
+          return orgId === user?._id || orgId === user?.id;
+        });
+        setTournaments(ownedTournaments);
+      })
+      .catch(console.error);
+  }, [user]);
 
   useEffect(() => {
     if (form.tournamentId) {
@@ -113,7 +124,7 @@ const CreateMatchPage = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="label">Match Date & Time</label>
               <input type="datetime-local" value={form.matchDate}
@@ -125,6 +136,16 @@ const CreateMatchPage = () => {
               <label className="label">Venue</label>
               <input value={form.venue} onChange={e => setForm({...form, venue: e.target.value})}
                 className="input" placeholder="Wankhede Stadium" required />
+            </div>
+            <div>
+              <label className="label">Overs</label>
+              <select value={form.totalOvers} onChange={e => setForm({...form, totalOvers: Number(e.target.value)})}
+                className="input" required>
+                <option value={5}>5 Overs</option>
+                <option value={10}>10 Overs</option>
+                <option value={20}>20 Overs (T20)</option>
+                <option value={50}>50 Overs (ODI)</option>
+              </select>
             </div>
           </div>
 

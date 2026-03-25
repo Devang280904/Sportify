@@ -6,7 +6,7 @@ import { HiOutlineTrash } from 'react-icons/hi';
 import { useState } from 'react';
 
 const ScoreCard = ({ match, scores, onDelete }) => {
-  const { canManage } = useAuth();
+  const { user } = useAuth();
   const [deleting, setDeleting] = useState(false);
   const team1Score = scores?.find(s => s.teamId === match.team1Id?._id);
   const team2Score = scores?.find(s => s.teamId === match.team2Id?._id);
@@ -19,7 +19,7 @@ const ScoreCard = ({ match, scores, onDelete }) => {
 
   // Determine navigation link based on match status and user role
   const getMatchLink = () => {
-    if (canManage() && (match.status === 'scheduled' || match.status === 'live')) {
+    if (user && ['scheduled', 'live'].includes(match.status)) {
       return `/match/${match._id}/score`; // Live Scoring Page
     }
     if (match.status === 'live') {
@@ -65,7 +65,7 @@ const ScoreCard = ({ match, scores, onDelete }) => {
           )}
 
           {/* Delete Button - Only for Scheduled Matches */}
-          {canManage() && match.status === 'scheduled' && (
+          {user && match.status === 'scheduled' && (
             <button
               onClick={handleDelete}
               disabled={deleting}

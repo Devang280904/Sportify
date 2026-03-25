@@ -27,7 +27,7 @@ const matchSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['scheduled', 'toss-pending', 'live', 'completed'],
+    enum: ['scheduled', 'live', 'completed'],
     default: 'scheduled',
   },
   winnerId: {
@@ -35,36 +35,19 @@ const matchSchema = new mongoose.Schema({
     ref: 'Team',
     default: null,
   },
-  toss: {
-    winnerId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Team',
-      default: null,
-    },
-    decision: {
-      type: String,
-      enum: ['bat', 'bowl'],
-      default: null,
-    },
-    coinResult: {
-      type: String,
-      enum: ['heads', 'tails'],
-      default: null,
-    },
-    chosenTeamId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Team',
-      default: null,
-    },
-    completedAt: {
-      type: Date,
-      default: null,
-    },
-  },
+
   battingTeamId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Team',
     default: null,
+  },
+  totalOvers: {
+    type: Number,
+    default: 20,
+  },
+  currentInnings: {
+    type: Number,
+    default: 1,
   },
 }, {
   timestamps: true,

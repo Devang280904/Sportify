@@ -5,16 +5,16 @@ const {
   updateTournament, deleteTournament,
 } = require('../controllers/tournamentController');
 const { getPointsTable } = require('../controllers/scoreController');
-const { protect, authorize } = require('../middlewares/auth');
+const { protect, isOwner } = require('../middlewares/auth');
 
 router.route('/')
   .get(protect, getTournaments)
-  .post(protect, authorize('organizer', 'admin'), createTournament);
+  .post(protect, createTournament);
 
 router.route('/:id')
   .get(protect, getTournament)
-  .put(protect, authorize('organizer', 'admin'), updateTournament)
-  .delete(protect, authorize('organizer', 'admin'), deleteTournament);
+  .put(protect, isOwner, updateTournament)
+  .delete(protect, isOwner, deleteTournament);
 
 router.get('/:id/points', protect, getPointsTable);
 

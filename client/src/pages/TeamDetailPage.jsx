@@ -6,7 +6,7 @@ import { HiOutlinePlus, HiOutlineTrash, HiOutlineX } from 'react-icons/hi';
 
 const TeamDetailPage = () => {
   const { id } = useParams();
-  const { canManage } = useAuth();
+  const { user } = useAuth();
   const [team, setTeam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -91,7 +91,7 @@ const TeamDetailPage = () => {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-txt-primary">Squad</h2>
-          {canManage() && team.players.length < 11 && (
+          {user && team.players.length < 11 && (
             <button onClick={() => setShowModal(true)} className="btn-primary inline-flex items-center space-x-2">
               <HiOutlinePlus /> <span>Add Player</span>
             </button>
@@ -115,7 +115,7 @@ const TeamDetailPage = () => {
                     </div>
                   </div>
                 </div>
-                {canManage() && (
+                {user && (
                   <button onClick={() => handleRemovePlayer(player._id)} 
                     className="p-2 text-txt-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-all">
                     <HiOutlineTrash />

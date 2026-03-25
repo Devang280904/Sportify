@@ -5,15 +5,24 @@ const ScoreRecord = require('../models/ScoreRecord');
 // @route   POST /api/matches
 exports.createMatch = async (req, res) => {
   try {
-    const { tournamentId, team1Id, team2Id, matchDate, venue } = req.body;
+    const { tournamentId, team1Id, team2Id, matchDate, venue, totalOvers } = req.body;
 
     if (team1Id === team2Id) {
       return res.status(400).json({ success: false, message: 'Team1 and Team2 cannot be the same' });
     }
 
+    // Verify tournament ownership
+    const Tournament = require('../models/Tournament');
+    const tournament = await Tournament.findById(tournamentId);
+    if (!tournament) {
+      return res.status(404).json({ success: false, message: 'Tournament not found' });
+    }
+    if (tournament.organizerId.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'You cannot add or modify another user’s tournament/match.' });
+    }
+
     // Backend Date Validation
     const matchTime = new Date(matchDate).getTime();
-    // Allow a 5 minute grace period for "current time" requests
     const currentTime = Date.now() - (5 * 60 * 1000); 
 
     if (matchTime < currentTime) {
@@ -24,7 +33,7 @@ exports.createMatch = async (req, res) => {
     }
 
     const match = await Match.create({
-      tournamentId, team1Id, team2Id, matchDate, venue,
+      tournamentId, team1Id, team2Id, matchDate, venue, totalOvers: totalOvers || 20,
     });
 
     // Create score records for both teams
@@ -65,7 +74,7 @@ exports.getMatch = async (req, res) => {
     const match = await Match.findById(req.params.id)
       .populate('team1Id', 'teamName logoURL players')
       .populate('team2Id', 'teamName logoURL players')
-      .populate('tournamentId', 'name')
+      .populate('tournamentId', 'name organizerId')
       .populate('winnerId', 'teamName');
 
     if (!match) {
@@ -80,106 +89,74 @@ exports.getMatch = async (req, res) => {
   }
 };
 
-// @desc    Start toss (randomly choose team and coin flip)
-// @route   POST /api/matches/:id/toss
-exports.startToss = async (req, res) => {
+// @desc    Start match (move from scheduled to live)
+// @route   POST /api/matches/:id/start
+exports.startMatch = async (req, res) => {
   try {
+    const { battingTeamId } = req.body;
     const match = await Match.findById(req.params.id);
-    
+
     if (!match) {
       return res.status(404).json({ success: false, message: 'Match not found' });
     }
 
-    // Check if match is scheduled and within 20 minutes of start time
-    const matchTime = new Date(match.matchDate).getTime();
-    const currentTime = Date.now();
-    const timeDifference = matchTime - currentTime;
-    const minutesDifference = timeDifference / (1000 * 60);
-
-    if (match.status !== 'scheduled') {
-      return res.status(400).json({ success: false, message: 'Toss can only be done for scheduled matches' });
+    // Accept 'scheduled' or legacy 'toss-pending' (migration support)
+    if (!['scheduled', 'toss-pending'].includes(match.status)) {
+      return res.status(400).json({ success: false, message: 'Match is already started or completed' });
     }
 
-    if (minutesDifference > 20 * 60 * 1000) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Toss can only be started within 20 minutes before match start time' 
-      });
+    if (!battingTeamId) {
+      return res.status(400).json({ success: false, message: 'battingTeamId is required' });
     }
 
-    // Randomly choose a team (0 = team1, 1 = team2)
-    const tossWinnerIndex = Math.random() < 0.5 ? 0 : 1;
-    const tossWinnerId = tossWinnerIndex === 0 ? match.team1Id : match.team2Id;
+    const validTeam = [match.team1Id.toString(), match.team2Id.toString()].includes(battingTeamId);
+    if (!validTeam) {
+      return res.status(400).json({ success: false, message: 'battingTeamId must be one of the two match teams' });
+    }
 
-    // Randomly choose coin flip result
-    const coinResult = Math.random() < 0.5 ? 'heads' : 'tails';
-
-    // Update match with toss information
-    match.status = 'toss-pending';
-    match.toss = {
-      winnerId: tossWinnerId,
-      coinResult: coinResult,
-      chosenTeamId: tossWinnerId,
-    };
-    await match.save();
+    // Use findByIdAndUpdate to bypass Mongoose enum validation on legacy docs
+    const updatedMatch = await Match.findByIdAndUpdate(
+      req.params.id,
+      { $set: { status: 'live', battingTeamId } },
+      { new: true, runValidators: false }
+    ).populate('team1Id', 'teamName').populate('team2Id', 'teamName');
 
     const io = req.app.get('io');
-    io.to(`match:${match._id}`).emit('tossStarted', {
-      matchId: match._id,
-      tossWinnerId: match.toss.winnerId,
-      coinResult: coinResult,
+    io.to(`match:${updatedMatch._id}`).emit('matchStarted', {
+      matchId: updatedMatch._id,
+      battingTeamId: updatedMatch.battingTeamId,
     });
 
-    res.json({ success: true, data: match });
+    res.json({ success: true, data: updatedMatch });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// @desc    Make toss decision (bat or bowl)
-// @route   POST /api/matches/:id/toss-decision
-exports.makeTossDecision = async (req, res) => {
+// @desc    Update match details
+// @route   PUT /api/matches/:id
+exports.updateMatch = async (req, res) => {
   try {
-    const { decision } = req.body; // 'bat' or 'bowl'
     const match = await Match.findById(req.params.id);
 
     if (!match) {
       return res.status(404).json({ success: false, message: 'Match not found' });
     }
 
-    if (match.status !== 'toss-pending') {
-      return res.status(400).json({ success: false, message: 'Match is not in toss-pending state' });
+    // Constraint: Once match starts, no structural changes
+    if (match.status !== 'scheduled') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Structural changes are not allowed once the match has started.' 
+      });
     }
 
-    if (!['bat', 'bowl'].includes(decision)) {
-      return res.status(400).json({ success: false, message: 'Decision must be "bat" or "bowl"' });
-    }
-
-    // Update toss decision
-    match.toss.decision = decision;
-    match.toss.completedAt = new Date();
-
-    // Determine batting team based on decision
-    if (decision === 'bat') {
-      match.battingTeamId = match.toss.winnerId;
-    } else {
-      // If toss winner chose to bowl, other team bats
-      match.battingTeamId = match.toss.winnerId.toString() === match.team1Id.toString() ? match.team2Id : match.team1Id;
-    }
-
-    // Change status to live to start recording balls
-    match.status = 'live';
-    await match.save();
-
-    const io = req.app.get('io');
-    io.to(`match:${match._id}`).emit('tossDecisionMade', {
-      matchId: match._id,
-      decision: decision,
-      battingTeamId: match.battingTeamId,
-      tossInfo: match.toss,
+    const updatedMatch = await Match.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
     });
 
-    res.json({ success: true, data: match });
+    res.json({ success: true, data: updatedMatch });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

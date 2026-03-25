@@ -2,18 +2,14 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { HiOutlinePlus, HiOutlineTrash, HiOutlineX, HiOutlineDownload, HiOutlineUpload } from 'react-icons/hi';
+import { HiOutlineTrash, HiOutlineDownload, HiOutlineUpload } from 'react-icons/hi';
 
 const TeamDetailPage = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const [team, setTeam] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [playerForm, setPlayerForm] = useState({
-    name: '', role: 'batsman', battingStyle: 'right-hand', bowlingStyle: 'NA',
-  });
 
   useEffect(() => { fetchTeam(); }, [id]);
 
@@ -28,20 +24,7 @@ const TeamDetailPage = () => {
     }
   };
 
-  const handleAddPlayer = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await api.post(`/teams/${id}/players`, playerForm);
-      setShowModal(false);
-      setPlayerForm({ name: '', role: 'batsman', battingStyle: 'right-hand', bowlingStyle: 'NA' });
-      fetchTeam();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to add player');
-    } finally {
-      setSaving(false);
-    }
-  };
+
 
   const handleRemovePlayer = async (playerId) => {
     if (!confirm('Remove this player?')) return;
@@ -147,15 +130,10 @@ const TeamDetailPage = () => {
               <HiOutlineDownload /> <span>Template</span>
             </button>
             {user && team.players.length < 11 && (
-              <>
-                <label className="btn-secondary inline-flex items-center space-x-2 text-sm py-1.5 cursor-pointer">
-                  <HiOutlineUpload /> <span>Upload CSV</span>
-                  <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
-                </label>
-                <button onClick={() => setShowModal(true)} className="btn-primary inline-flex items-center space-x-2 text-sm py-1.5">
-                  <HiOutlinePlus /> <span>Add Player</span>
-                </button>
-              </>
+              <label className="btn-secondary inline-flex items-center space-x-2 text-sm py-1.5 cursor-pointer">
+                <HiOutlineUpload /> <span>Upload CSV</span>
+                <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+              </label>
             )}
           </div>
         </div>
@@ -193,55 +171,7 @@ const TeamDetailPage = () => {
         )}
       </div>
 
-      {/* Add Player Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-slide-up">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold">Add Player</h2>
-              <button onClick={() => setShowModal(false)} className="p-1 hover:bg-surface rounded-lg">
-                <HiOutlineX className="text-xl" />
-              </button>
-            </div>
-            <form onSubmit={handleAddPlayer} className="space-y-4">
-              <div>
-                <label className="label">Player Name</label>
-                <input value={playerForm.name} onChange={e => setPlayerForm({...playerForm, name: e.target.value})}
-                  className="input" required placeholder="Virat Kohli" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">Role</label>
-                  <select value={playerForm.role} onChange={e => setPlayerForm({...playerForm, role: e.target.value})} className="input">
-                    <option value="batsman">Batsman</option>
-                    <option value="bowler">Bowler</option>
-                    <option value="allrounder">All-rounder</option>
-                    <option value="wicketkeeper">Wicket-keeper</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Batting Style</label>
-                  <select value={playerForm.battingStyle} onChange={e => setPlayerForm({...playerForm, battingStyle: e.target.value})} className="input">
-                    <option value="right-hand">Right Hand</option>
-                    <option value="left-hand">Left Hand</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="label">Bowling Style</label>
-                <select value={playerForm.bowlingStyle} onChange={e => setPlayerForm({...playerForm, bowlingStyle: e.target.value})} className="input">
-                  <option value="NA">N/A</option>
-                  <option value="pace">Pace</option>
-                  <option value="spin">Spin</option>
-                </select>
-              </div>
-              <button type="submit" disabled={saving} className="btn-primary w-full py-2.5">
-                {saving ? 'Adding...' : 'Add Player'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };

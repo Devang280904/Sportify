@@ -6,7 +6,6 @@ import {
   HiOutlineUserGroup,
   HiOutlineCalendar,
   HiOutlineChartBar,
-  HiOutlineEye,
   HiOutlineUser,
 } from 'react-icons/hi';
 import { MdSportsCricket } from 'react-icons/md';
@@ -49,10 +48,7 @@ const Sidebar = () => {
           <span>Fixtures</span>
         </NavLink>
 
-        <NavLink to="/live" className={linkClass}>
-          <HiOutlineEye className="text-lg" />
-          <span>Live Matches</span>
-        </NavLink>
+
 
         <NavLink to="/points" className={linkClass}>
           <HiOutlineChartBar className="text-lg" />

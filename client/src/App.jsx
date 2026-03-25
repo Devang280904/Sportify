@@ -56,7 +56,7 @@ function App() {
               <Route path="/match/:id/score" element={<LiveScoringPage />} />
 
               {/* Viewer Routes */}
-              <Route path="/live" element={<FixturesPage />} />
+
               <Route path="/fixtures" element={<FixturesPage />} />
               <Route path="/points" element={<PointsTablePage />} />
               

@@ -213,9 +213,16 @@ exports.uploadPlayers = async (req, res) => {
       if (boLower.includes('fast') || boLower.includes('pace')) boStyle = 'faster';
       else if (boLower.includes('spin')) boStyle = 'spiner';
 
+      // Robust mapping for role
+      let r = role.toLowerCase().trim();
+      if (r.includes('wicket') || r === 'wk' || r === 'keeper') r = 'wicketkeeper';
+      else if (r.includes('all')) r = 'allrounder';
+      else if (r.includes('bat')) r = 'batsman';
+      else if (r.includes('bowl')) r = 'bowler';
+
       const player = await Player.create({
         name,
-        role: role.toLowerCase(),
+        role: r,
         battingStyle: bStyle,
         bowlingStyle: boStyle,
         teamId: team._id,

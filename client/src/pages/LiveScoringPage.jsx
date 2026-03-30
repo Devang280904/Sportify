@@ -55,7 +55,7 @@ const LiveScoringPage = () => {
       const matchData = res.data.data.match;
       setMatch(matchData);
       setScores(res.data.data.scores);
-      
+
       if (matchData.battingTeamId) {
         setActiveTeamId(matchData.battingTeamId);
       } else if (res.data.data.scores.length > 0) {
@@ -92,15 +92,15 @@ const LiveScoringPage = () => {
 
     setUpdating(true);
     try {
-      const res = await api.post(`/scores/${id}/score`, {
-        teamId: activeTeamId, 
-        runs, 
-        type, 
+      const res = await api.post(`/matches/${id}/score`, {
+        teamId: activeTeamId,
+        runs,
+        type,
         description,
       });
       const newScore = res.data.data;
       setScores(prev => prev.map(s => s.teamId === activeTeamId ? newScore : s));
-      
+
       if (type === 'wicket') {
         setShowBatsmanModal(true);
         setSelectingType('striker');
@@ -127,7 +127,7 @@ const LiveScoringPage = () => {
       if (type === 'striker') payload.strikerId = playerId;
       else payload.nonStrikerId = playerId;
 
-      const res = await api.post(`/scores/${id}/set-batsmen`, payload);
+      const res = await api.post(`/matches/${id}/set-batsmen`, payload);
       setScores(prev => prev.map(s => s.teamId === activeTeamId ? res.data.data : s));
       setShowBatsmanModal(false);
     } catch (err) {
@@ -137,9 +137,9 @@ const LiveScoringPage = () => {
 
   const setBowler = async (playerId) => {
     try {
-      const res = await api.post(`/scores/${id}/set-bowler`, { 
-        teamId: activeTeamId, 
-        bowlerId: playerId 
+      const res = await api.post(`/matches/${id}/set-bowler`, {
+        teamId: activeTeamId,
+        bowlerId: playerId
       });
       setScores(prev => prev.map(s => s.teamId === activeTeamId ? res.data.data : s));
       setShowBowlerModal(false);
@@ -151,7 +151,7 @@ const LiveScoringPage = () => {
   const handleSwapInnings = async () => {
     if (!window.confirm('Are you sure you want to swap innings?')) return;
     try {
-      await api.post(`/scores/${id}/swap-innings`);
+      await api.post(`/matches/${id}/swap-innings`);
       fetchMatch();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to swap innings');
@@ -162,7 +162,7 @@ const LiveScoringPage = () => {
     if (!activeTeamId || updating) return;
     setUpdating(true);
     try {
-      const res = await api.post(`/scores/${id}/undo`, { teamId: activeTeamId });
+      const res = await api.post(`/matches/${id}/undo`, { teamId: activeTeamId });
       setScores(prev => prev.map(s => s.teamId === activeTeamId ? res.data.data : s));
     } catch (err) {
       alert(err.response?.data?.message || 'Nothing to undo');
@@ -180,7 +180,7 @@ const LiveScoringPage = () => {
     }
     if (!window.confirm('Complete and end this match?')) return;
     try {
-      await api.post(`/scores/${id}/complete`, { winnerId });
+      await api.post(`/matches/${id}/complete`, { winnerId });
       navigate(`/match/${id}/summary`);
     } catch (err) {
       alert('Failed to complete match');
@@ -196,26 +196,26 @@ const LiveScoringPage = () => {
 
   const isOwner = user?.id === match?.tournamentId?.organizerId || user?.id === match?.tournamentId?.organizerId?._id;
 
-    const availableBatsmen = battingPlayers.filter(player => {
-      const stat = activeScore?.batting?.find(b => b.playerId === player._id);
-      if (stat?.isOut) return false;
-      if (selectingType === 'striker' && player._id === activeScore?.nonStrikerId) return false;
-      if (selectingType === 'nonStriker' && player._id === activeScore?.strikerId) return false;
-      return true;
-    });
+  const availableBatsmen = battingPlayers.filter(player => {
+    const stat = activeScore?.batting?.find(b => b.playerId === player._id);
+    if (stat?.isOut) return false;
+    if (selectingType === 'striker' && player._id === activeScore?.nonStrikerId) return false;
+    if (selectingType === 'nonStriker' && player._id === activeScore?.strikerId) return false;
+    return true;
+  });
 
-    const getRestrictedBowler = () => {
-      if (!activeScore?.ballByBall?.length) return null;
-      const legalBalls = activeScore.ballByBall.filter(b => b.type !== 'wide' && b.type !== 'no-ball');
-      const completedOvers = Math.floor(legalBalls.length / 6);
-      if (completedOvers === 0) return null;
-      // Return the bowler who bowled the final ball of the last completed over
-      const lastBallOfCompletedOver = legalBalls[completedOvers * 6 - 1];
-      return lastBallOfCompletedOver?.bowlerId;
-    };
+  const getRestrictedBowler = () => {
+    if (!activeScore?.ballByBall?.length) return null;
+    const legalBalls = activeScore.ballByBall.filter(b => b.type !== 'wide' && b.type !== 'no-ball');
+    const completedOvers = Math.floor(legalBalls.length / 6);
+    if (completedOvers === 0) return null;
+    // Return the bowler who bowled the final ball of the last completed over
+    const lastBallOfCompletedOver = legalBalls[completedOvers * 6 - 1];
+    return lastBallOfCompletedOver?.bowlerId;
+  };
 
-    const restrictedBowlerId = getRestrictedBowler();
-    const availableBowlers = bowlingPlayers.filter(player => player._id !== restrictedBowlerId);
+  const restrictedBowlerId = getRestrictedBowler();
+  const availableBowlers = bowlingPlayers.filter(player => player._id !== restrictedBowlerId);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20">
@@ -323,27 +323,27 @@ const LiveScoringPage = () => {
                 </h3>
               </div>
               <div className={`flex justify-between items-center p-3 rounded-lg h-24 ${activeScore?.currentBowlerId ? 'bg-secondary/5 border border-secondary/10' : 'bg-surface-alt border-dashed border'}`}>
-                  {activeScore?.currentBowlerId ? (
-                    <>
-                      <div>
-                        <p className="font-bold text-sm">{bowlingPlayers.find(p => p._id === activeScore.currentBowlerId)?.name}</p>
-                        <p className="text-[10px] text-txt-muted">Econ: {getBowlingStat(activeScore.currentBowlerId).economy?.toFixed(1) || 0}</p>
-                        {isOwner && <button onClick={() => setShowBowlerModal(true)} className="text-[10px] text-secondary hover:underline mt-1 font-medium">Change Bowler</button>}
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-lg text-secondary">
-                          {getBowlingStat(activeScore.currentBowlerId).wickets}-{getBowlingStat(activeScore.currentBowlerId).runsConceded}
-                        </p>
-                        <p className="text-[10px] text-txt-muted">{getBowlingStat(activeScore.currentBowlerId).oversBowled} overs</p>
-                      </div>
-                    </>
-                  ) : (
-                    isOwner ? (
-                      <button onClick={() => setShowBowlerModal(true)} className="text-xs text-secondary font-medium flex items-center gap-1 mx-auto py-4">
-                        <MdPersonAdd /> Select Bowler
-                      </button>
-                    ) : null
-                  )}
+                {activeScore?.currentBowlerId ? (
+                  <>
+                    <div>
+                      <p className="font-bold text-sm">{bowlingPlayers.find(p => p._id === activeScore.currentBowlerId)?.name}</p>
+                      <p className="text-[10px] text-txt-muted">Econ: {getBowlingStat(activeScore.currentBowlerId).economy?.toFixed(1) || 0}</p>
+                      {isOwner && <button onClick={() => setShowBowlerModal(true)} className="text-[10px] text-secondary hover:underline mt-1 font-medium">Change Bowler</button>}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-lg text-secondary">
+                        {getBowlingStat(activeScore.currentBowlerId).wickets}-{getBowlingStat(activeScore.currentBowlerId).runsConceded}
+                      </p>
+                      <p className="text-[10px] text-txt-muted">{getBowlingStat(activeScore.currentBowlerId).oversBowled} overs</p>
+                    </div>
+                  </>
+                ) : (
+                  isOwner ? (
+                    <button onClick={() => setShowBowlerModal(true)} className="text-xs text-secondary font-medium flex items-center gap-1 mx-auto py-4">
+                      <MdPersonAdd /> Select Bowler
+                    </button>
+                  ) : null
+                )}
               </div>
             </div>
           </div>
@@ -355,34 +355,34 @@ const LiveScoringPage = () => {
                 <span>Quick Actions</span>
                 <span>Innings {match.currentInnings}</span>
               </div>
-            <div className="p-6">
-              <div className="grid grid-cols-4 sm:grid-cols-7 gap-3 mb-6">
-                {[0, 1, 2, 3, 4, 5, 6].map(runs => (
-                  <button key={runs} onClick={() => updateScore(runs)} disabled={updating}
-                    className="h-16 flex flex-col items-center justify-center bg-surface-alt border border-surface-border hover:bg-primary hover:text-white hover:border-primary text-txt-primary rounded-xl transition-all group">
-                    <span className="text-2xl font-black">{runs}</span>
-                    <span className="text-[10px] opacity-0 group-hover:opacity-100 uppercase">Runs</span>
+              <div className="p-6">
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-3 mb-6">
+                  {[0, 1, 2, 3, 4, 5, 6].map(runs => (
+                    <button key={runs} onClick={() => updateScore(runs)} disabled={updating}
+                      className="h-16 flex flex-col items-center justify-center bg-surface-alt border border-surface-border hover:bg-primary hover:text-white hover:border-primary text-txt-primary rounded-xl transition-all group">
+                      <span className="text-2xl font-black">{runs}</span>
+                      <span className="text-[10px] opacity-0 group-hover:opacity-100 uppercase">Runs</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <button onClick={() => updateScore(1, 'wide')} disabled={updating} className="btn bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-600 hover:text-white py-4 font-black rounded-xl text-lg uppercase">WD</button>
+                  <button onClick={() => updateScore(1, 'no-ball')} disabled={updating} className="btn bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-600 hover:text-white py-4 font-black rounded-xl text-lg uppercase">NB</button>
+                  <button onClick={() => updateScore(0, 'wicket')} disabled={updating} className="btn bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white py-4 font-black rounded-xl text-lg uppercase">Out</button>
+                </div>
+                <div className="flex gap-4 mt-8 pt-6 border-t border-surface-border">
+                  <button onClick={undoLastBall} disabled={updating} className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-warning text-warning font-bold hover:bg-warning hover:text-white transition-all">
+                    <HiOutlineRewind className="text-xl" /> Undo Ball
                   </button>
-                ))}
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <button onClick={() => updateScore(1, 'wide')} disabled={updating} className="btn bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-600 hover:text-white py-4 font-black rounded-xl text-lg uppercase">WD</button>
-                <button onClick={() => updateScore(1, 'no-ball')} disabled={updating} className="btn bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-600 hover:text-white py-4 font-black rounded-xl text-lg uppercase">NB</button>
-                <button onClick={() => updateScore(0, 'wicket')} disabled={updating} className="btn bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white py-4 font-black rounded-xl text-lg uppercase">Out</button>
-              </div>
-              <div className="flex gap-4 mt-8 pt-6 border-t border-surface-border">
-                <button onClick={undoLastBall} disabled={updating} className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-warning text-warning font-bold hover:bg-warning hover:text-white transition-all">
-                  <HiOutlineRewind className="text-xl" /> Undo Ball
-                </button>
-                <button onClick={handleSwapInnings} disabled={match.currentInnings >= 2} className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border ${match.currentInnings >= 2 ? 'border-surface-border text-txt-muted opacity-50 cursor-not-allowed' : 'border-secondary text-secondary font-bold hover:bg-secondary hover:text-white'} transition-all`}>
-                  <HiOutlineSwitchHorizontal className="text-xl" /> Swap Innings
-                </button>
-                {match.currentInnings === 2 && (
-                  <button onClick={completeMatch} className="flex-1 py-3 px-4 rounded-xl bg-danger text-white font-bold hover:bg-danger-dark shadow-lg shadow-danger/20 transition-all">
-                    End Match
+                  <button onClick={handleSwapInnings} disabled={match.currentInnings >= 2} className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border ${match.currentInnings >= 2 ? 'border-surface-border text-txt-muted opacity-50 cursor-not-allowed' : 'border-secondary text-secondary font-bold hover:bg-secondary hover:text-white'} transition-all`}>
+                    <HiOutlineSwitchHorizontal className="text-xl" /> Swap Innings
                   </button>
-                )}
-              </div>
+                  {match.currentInnings === 2 && (
+                    <button onClick={completeMatch} className="flex-1 py-3 px-4 rounded-xl bg-danger text-white font-bold hover:bg-danger-dark shadow-lg shadow-danger/20 transition-all">
+                      End Match
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -433,19 +433,18 @@ const LiveScoringPage = () => {
           <h3 className="font-bold text-txt-primary mb-4 flex items-center gap-2">
             {isOwner ? 'Current Over' : 'Over-by-Over History'}
           </h3>
-          
+
           {isOwner ? (
             <div className="flex flex-wrap gap-2">
               {activeScore.ballByBall
                 .filter(b => b.over === Math.max(...activeScore.ballByBall.map(x => x.over), 1))
                 .map((ball, i) => (
-                  <div key={i} className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm border-2 shadow-sm ${
-                    ball.type === 'wicket' ? 'bg-red-600 text-white border-red-700' :
-                    ball.runs === 4 ? 'bg-accent/20 text-accent border-accent/30' :
-                    ball.runs === 6 ? 'bg-accent text-white border-accent-dark' :
-                    (ball.type === 'wide' || ball.type === 'no-ball') ? 'bg-orange-100 text-orange-700 border-orange-200' :
-                    'bg-surface-alt text-txt-primary border-surface-border'
-                  }`}>
+                  <div key={i} className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm border-2 shadow-sm ${ball.type === 'wicket' ? 'bg-red-600 text-white border-red-700' :
+                      ball.runs === 4 ? 'bg-accent/20 text-accent border-accent/30' :
+                        ball.runs === 6 ? 'bg-accent text-white border-accent-dark' :
+                          (ball.type === 'wide' || ball.type === 'no-ball') ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                            'bg-surface-alt text-txt-primary border-surface-border'
+                    }`}>
                     {ball.type === 'wicket' ? 'W' : ball.type === 'wide' ? 'Wd' : ball.type === 'no-ball' ? 'Nb' : ball.runs}
                   </div>
                 ))}
@@ -463,13 +462,12 @@ const LiveScoringPage = () => {
                   <span className="text-xs font-bold text-txt-muted uppercase w-16 shrink-0">Over {overNum}</span>
                   <div className="flex flex-wrap gap-1.5">
                     {balls.map((ball, i) => (
-                      <div key={i} className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs border ${
-                        ball.type === 'wicket' ? 'bg-red-600 text-white border-red-700' :
-                        ball.runs === 4 ? 'bg-accent/20 text-accent border-accent/30' :
-                        ball.runs === 6 ? 'bg-accent text-white border-accent-dark' :
-                        (ball.type === 'wide' || ball.type === 'no-ball') ? 'bg-orange-100 text-orange-700 border-orange-200' :
-                        'bg-white text-txt-primary border-surface-border'
-                      }`}>
+                      <div key={i} className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs border ${ball.type === 'wicket' ? 'bg-red-600 text-white border-red-700' :
+                          ball.runs === 4 ? 'bg-accent/20 text-accent border-accent/30' :
+                            ball.runs === 6 ? 'bg-accent text-white border-accent-dark' :
+                              (ball.type === 'wide' || ball.type === 'no-ball') ? 'bg-orange-100 text-orange-700 border-orange-200' :
+                                'bg-white text-txt-primary border-surface-border'
+                        }`}>
                         {ball.type === 'wicket' ? 'W' : ball.type === 'wide' ? 'Wd' : ball.type === 'no-ball' ? 'Nb' : ball.runs}
                       </div>
                     ))}

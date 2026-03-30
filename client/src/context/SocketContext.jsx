@@ -9,8 +9,15 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const newSocket = io(window.location.origin, {
+    // Connect directly to backend, not through Vite proxy
+    const socketUrl = import.meta.env.DEV ? 'http://localhost:5000' : window.location.origin;
+    
+    const newSocket = io(socketUrl, {
       transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 5,
     });
 
     newSocket.on('connect', () => {

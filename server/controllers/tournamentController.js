@@ -6,6 +6,29 @@ const { getCache, setCache, delCache } = require('../config/redis');
 exports.createTournament = async (req, res) => {
   try {
     const { name, startDate, endDate, status } = req.body;
+
+    // Validate dates
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    
+    const end = new Date(endDate);
+    end.setHours(0, 0, 0, 0);
+
+    if (start < today) {
+      return res.status(400).json({ success: false, message: 'Start date cannot be before today.' });
+    }
+
+    if (end < today) {
+      return res.status(400).json({ success: false, message: 'End date cannot be before today.' });
+    }
+
+    if (end < start) {
+      return res.status(400).json({ success: false, message: 'End date must be equal to or after the start date.' });
+    }
+
     const tournament = await Tournament.create({
       name,
       startDate,
@@ -65,6 +88,29 @@ exports.updateTournament = async (req, res) => {
     }
     if (tournament.organizerId.toString() !== req.user.id) {
       return res.status(403).json({ success: false, message: 'You cannot add or modify another user’s tournament/match.' });
+    }
+    // If dates are being updated, validate them
+    if (req.body.startDate || req.body.endDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const startDate = req.body.startDate ? new Date(req.body.startDate) : new Date(tournament.startDate);
+      startDate.setHours(0, 0, 0, 0);
+      
+      const endDate = req.body.endDate ? new Date(req.body.endDate) : new Date(tournament.endDate);
+      endDate.setHours(0, 0, 0, 0);
+
+      if (startDate < today) {
+        return res.status(400).json({ success: false, message: 'Start date cannot be before today.' });
+      }
+
+      if (endDate < today) {
+        return res.status(400).json({ success: false, message: 'End date cannot be before today.' });
+      }
+
+      if (endDate < startDate) {
+        return res.status(400).json({ success: false, message: 'End date must be equal to or after the start date.' });
+      }
     }
     const updated = await Tournament.findByIdAndUpdate(req.params.id, req.body, {
       new: true, runValidators: true,

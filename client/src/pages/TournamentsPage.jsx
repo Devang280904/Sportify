@@ -13,6 +13,16 @@ const TournamentsPage = () => {
   const [filter, setFilter] = useState('all');
   const [form, setForm] = useState({ name: '', startDate: '', endDate: '' });
   const [saving, setSaving] = useState(false);
+  const [dateError, setDateError] = useState('');
+  const [todayDate, setTodayDate] = useState('');
+
+  // Calculate today's date in YYYY-MM-DD format
+  useEffect(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dateString = today.toISOString().split('T')[0];
+    setTodayDate(dateString);
+  }, []);
 
   useEffect(() => { fetchTournaments(); }, []);
 
@@ -27,19 +37,54 @@ const TournamentsPage = () => {
     }
   };
 
+  const validateDates = (startDate, endDate) => {
+    if (!startDate || !endDate) return '';
+    
+    if (startDate < todayDate) {
+      return 'Start date cannot be before today.';
+    }
+    
+    if (endDate < todayDate) {
+      return 'End date cannot be before today.';
+    }
+    
+    if (endDate < startDate) {
+      return 'End date must be equal to or after the start date.';
+    }
+    
+    return '';
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
+    
+    const error = validateDates(form.startDate, form.endDate);
+    if (error) {
+      setDateError(error);
+      return;
+    }
+    
     setSaving(true);
     try {
       await api.post('/tournaments', form);
       setShowModal(false);
       setForm({ name: '', startDate: '', endDate: '' });
+      setDateError('');
       fetchTournaments();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to create tournament');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleDateChange = (field, value) => {
+    const newForm = { ...form, [field]: value };
+    setForm(newForm);
+    
+    // Validate dates as user types
+    const error = validateDates(newForm.startDate, newForm.endDate);
+    setDateError(error);
   };
 
   const handleDelete = async () => {
@@ -143,7 +188,7 @@ const TournamentsPage = () => {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-slide-up">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-txt-primary">Create Tournament</h2>
-              <button onClick={() => setShowModal(false)} className="p-1 hover:bg-surface rounded-lg">
+              <button onClick={() => { setShowModal(false); setDateError(''); }} className="p-1 hover:bg-surface rounded-lg">
                 <HiOutlineX className="text-xl text-txt-muted" />
               </button>
             </div>
@@ -157,17 +202,24 @@ const TournamentsPage = () => {
                 <div>
                   <label className="label">Start Date</label>
                   <input type="date" value={form.startDate}
-                    onChange={e => setForm({...form, startDate: e.target.value})}
+                    onChange={e => handleDateChange('startDate', e.target.value)}
+                    min={todayDate}
                     className="input" required />
                 </div>
                 <div>
                   <label className="label">End Date</label>
                   <input type="date" value={form.endDate}
-                    onChange={e => setForm({...form, endDate: e.target.value})}
+                    onChange={e => handleDateChange('endDate', e.target.value)}
+                    min={todayDate}
                     className="input" required />
                 </div>
               </div>
-              <button type="submit" disabled={saving} className="btn-primary w-full py-2.5">
+              {dateError && (
+                <div className="bg-danger/10 border border-danger/20 text-danger text-sm rounded-lg p-3">
+                  {dateError}
+                </div>
+              )}
+              <button type="submit" disabled={saving || !!dateError} className="btn-primary w-full py-2.5 disabled:opacity-50 disabled:cursor-not-allowed">
                 {saving ? 'Creating...' : 'Create Tournament'}
               </button>
             </form>

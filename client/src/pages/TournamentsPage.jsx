@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { HiOutlinePlus, HiOutlineX, HiOutlineCalendar, HiOutlineTrash } from 'react-icons/hi';
 
 const TournamentsPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [tournaments, setTournaments] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(null);
@@ -31,10 +32,15 @@ const TournamentsPage = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.post('/tournaments', form);
+      const res = await api.post('/tournaments', form);
       setShowModal(false);
       setForm({ name: '', startDate: '', endDate: '' });
-      fetchTournaments();
+      // Redirect to the new tournament detail page to add teams
+      if (res.data.data?._id) {
+        navigate(`/tournaments/${res.data.data._id}`);
+      } else {
+        fetchTournaments();
+      }
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to create tournament');
     } finally {

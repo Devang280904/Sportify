@@ -11,6 +11,10 @@ const teamSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
   },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
   tournamentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Tournament',

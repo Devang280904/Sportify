@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { HiOutlineTrash, HiOutlineDownload, HiOutlineUpload } from 'react-icons/hi';
+import { HiOutlineTrash, HiOutlineDownload, HiOutlineUpload, HiOutlineUserAdd, HiOutlineX } from 'react-icons/hi';
 
 const TeamDetailPage = () => {
   const { id } = useParams();
@@ -10,6 +10,15 @@ const TeamDetailPage = () => {
   const [team, setTeam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  
+  // Manual Player Add States
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [playerForm, setPlayerForm] = useState({
+    name: '',
+    role: 'batsman',
+    battingStyle: 'Right handed',
+    bowlingStyle: 'NA'
+  });
 
   useEffect(() => { fetchTeam(); }, [id]);
 
@@ -24,8 +33,6 @@ const TeamDetailPage = () => {
     }
   };
 
-
-
   const handleRemovePlayer = async (playerId) => {
     if (!confirm('Remove this player?')) return;
     try {
@@ -36,14 +43,43 @@ const TeamDetailPage = () => {
     }
   };
 
+  const handleAddManualPlayer = async (e) => {
+    e.preventDefault();
+    if (team.players.length >= 11) return alert('Team already has 11 players');
+    
+    setSaving(true);
+    try {
+      await api.post(`/teams/${id}/players`, playerForm);
+      setPlayerForm({ name: '', role: 'batsman', battingStyle: 'Right handed', bowlingStyle: 'NA' });
+      setShowManualForm(false);
+      fetchTeam();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to add player');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleDownloadTemplate = () => {
     const headers = 'name,role,battingStyle,bowlingStyle\n';
-    const example = 'Virat Kohli,batsman,Right handed,NA\nJasprit Bumrah,bowler,Right handed,faster\nMS Dhoni,wicketkeeper,Right handed,NA\nKuldeep Yadav,bowler,Left handed,spiner';
-    const blob = new Blob([headers + example], { type: 'text/csv' });
+    const examplePlayers = [
+      'Virat Kohli,batsman,Right handed,NA',
+      'Rohit Sharma,batsman,Right handed,NA',
+      'Jasprit Bumrah,bowler,Right handed,faster',
+      'MS Dhoni,wicketkeeper,Right handed,NA',
+      'Ravindra Jadeja,allrounder,Left handed,spiner',
+      'KL Rahul,wicketkeeper,Right handed,NA',
+      'Hardik Pandya,allrounder,Right handed,faster',
+      'Mohammed Shami,bowler,Right handed,faster',
+      'Rishabh Pant,wicketkeeper,Left handed,NA',
+      'Suryakumar Yadav,batsman,Right handed,NA',
+      'Yuzvendra Chahal,bowler,Right handed,spiner'
+    ];
+    const blob = new Blob([headers + examplePlayers.join('\n')], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'player_template.csv';
+    a.download = 'team_squad_template.csv';
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -107,71 +143,130 @@ const TeamDetailPage = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="card">
+      <div className="card bg-gradient-to-r from-surface-card to-primary/5">
         <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold">
+          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold shadow-lg">
             {team.teamName?.charAt(0)}
           </div>
           <div>
             <h1 className="text-2xl font-bold text-txt-primary">{team.teamName}</h1>
             <p className="text-txt-secondary text-sm">
-              {team.tournamentId?.name || 'No tournament'} • {team.players?.length || 0}/11 players
+              {team.tournamentId?.name || 'No tournament'} • <span className={team.players?.length >= 11 ? 'text-accent font-bold' : 'text-txt-muted'}>{team.players?.length || 0}/11 players</span>
             </p>
           </div>
         </div>
       </div>
 
-      {/* Players List */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-txt-primary">Squad</h2>
-          <div className="flex items-center space-x-2">
-            <button onClick={handleDownloadTemplate} className="btn-outline inline-flex items-center space-x-2 text-sm py-1.5">
-              <HiOutlineDownload /> <span>Template</span>
+      {/* Players List Section */}
+      <div className="animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <h2 className="text-lg font-bold text-txt-primary">Squad Management</h2>
+          <div className="flex items-center gap-2">
+            {user && team.players.length < 11 && (
+              <button 
+                onClick={() => setShowManualForm(!showManualForm)}
+                className={`btn-primary flex items-center space-x-2 text-sm transition-all ${showManualForm ? 'bg-danger hover:bg-danger-dark focus:ring-danger' : ''}`}
+              >
+                {showManualForm ? <><HiOutlineX /> <span>Cancel</span></> : <><HiOutlineUserAdd /> <span>Add Manually</span></>}
+              </button>
+            )}
+            <div className="h-8 w-[1px] bg-surface-border mx-1 hidden sm:block"></div>
+            <button onClick={handleDownloadTemplate} className="btn-outline inline-flex items-center space-x-2 text-sm py-2">
+              <HiOutlineDownload /> <span>Download Template (11 Rows)</span>
             </button>
             {user && team.players.length < 11 && (
-              <label className="btn-secondary inline-flex items-center space-x-2 text-sm py-1.5 cursor-pointer">
-                <HiOutlineUpload /> <span>Upload CSV</span>
+              <label className="btn-secondary inline-flex items-center space-x-2 text-sm py-2 cursor-pointer transition-all hover:shadow-lg">
+                <HiOutlineUpload /> <span>CSV Upload</span>
                 <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
               </label>
             )}
           </div>
         </div>
 
+        {/* Manual Add Form Overlay/Section */}
+        {showManualForm && (
+          <div className="card border-primary/30 bg-primary/5 animate-slide-up mb-6">
+            <h3 className="text-md font-bold text-primary mb-4 flex items-center gap-2">
+              <HiOutlineUserAdd /> Add New Player
+            </h3>
+            <form onSubmit={handleAddManualPlayer} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="label">Player Name</label>
+                <input 
+                  value={playerForm.name} 
+                  onChange={e => setPlayerForm({...playerForm, name: e.target.value})}
+                  className="input" placeholder="e.g. Virat Kohli" required 
+                />
+              </div>
+              <div>
+                <label className="label">Role</label>
+                <select 
+                  value={playerForm.role}
+                  onChange={e => setPlayerForm({...playerForm, role: e.target.value})}
+                  className="input"
+                >
+                  <option value="batsman">Batsman</option>
+                  <option value="bowler">Bowler</option>
+                  <option value="allrounder">All-Rounder</option>
+                  <option value="wicketkeeper">Wicket-Keeper</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Batting Style</label>
+                <select 
+                  value={playerForm.battingStyle}
+                  onChange={e => setPlayerForm({...playerForm, battingStyle: e.target.value})}
+                  className="input"
+                >
+                  <option value="Right handed">Right handed</option>
+                  <option value="Left handed">Left handed</option>
+                </select>
+              </div>
+              <div className="flex items-end">
+                <button type="submit" disabled={saving || !playerForm.name} className="btn-primary w-full py-2.5">
+                  {saving ? 'Adding...' : 'Add to Squad'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
         {team.players?.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {team.players.map((player, idx) => (
-              <div key={player._id} className="card flex items-center justify-between animate-slide-up"
+              <div key={player._id} className="card flex items-center justify-between hover:border-primary/40 transition-all animate-slide-up group"
                 style={{ animationDelay: `${idx * 50}ms` }}>
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-primary font-bold text-sm">
+                  <div className="w-9 h-9 rounded-full bg-surface border border-surface-border flex items-center justify-center text-primary font-bold text-xs">
                     {idx + 1}
                   </div>
                   <div>
-                    <p className="font-medium text-txt-primary">{player.name}</p>
+                    <p className="font-semibold text-txt-primary truncate max-w-[150px]">{player.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className={`badge text-xs ${roleColors[player.role]}`}>{player.role}</span>
-                      <span className="text-xs text-txt-muted">{player.battingStyle} bat</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${roleColors[player.role]}`}>{player.role}</span>
                     </div>
                   </div>
                 </div>
-                {user && (
-                  <button onClick={() => handleRemovePlayer(player._id)} 
-                    className="p-2 text-txt-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-all">
-                    <HiOutlineTrash />
-                  </button>
-                )}
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-txt-muted whitespace-nowrap hidden group-hover:block transition-all">{player.battingStyle}</span>
+                  {user && (
+                    <button onClick={() => handleRemovePlayer(player._id)} 
+                      className="p-2 text-txt-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-all"
+                      title="Remove Player">
+                      <HiOutlineTrash />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="card text-center py-8">
-            <p className="text-txt-muted">No players added yet.</p>
+          <div className="card text-center py-12 bg-surface/50 border-dashed">
+            <HiOutlineUserAdd className="text-4xl text-txt-muted mx-auto mb-3 opacity-20" />
+            <p className="text-txt-muted">Your squad is empty. Add players to get started!</p>
           </div>
         )}
       </div>
-
-
     </div>
   );
 };

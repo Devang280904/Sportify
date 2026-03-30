@@ -92,7 +92,7 @@ const LiveScoringPage = () => {
 
     setUpdating(true);
     try {
-      const res = await api.post(`/matches/${id}/score`, {
+      const res = await api.post(`/scores/${id}/score`, {
         teamId: activeTeamId, 
         runs, 
         type, 
@@ -127,7 +127,7 @@ const LiveScoringPage = () => {
       if (type === 'striker') payload.strikerId = playerId;
       else payload.nonStrikerId = playerId;
 
-      const res = await api.post(`/matches/${id}/set-batsmen`, payload);
+      const res = await api.post(`/scores/${id}/set-batsmen`, payload);
       setScores(prev => prev.map(s => s.teamId === activeTeamId ? res.data.data : s));
       setShowBatsmanModal(false);
     } catch (err) {
@@ -137,7 +137,7 @@ const LiveScoringPage = () => {
 
   const setBowler = async (playerId) => {
     try {
-      const res = await api.post(`/matches/${id}/set-bowler`, { 
+      const res = await api.post(`/scores/${id}/set-bowler`, { 
         teamId: activeTeamId, 
         bowlerId: playerId 
       });
@@ -151,7 +151,7 @@ const LiveScoringPage = () => {
   const handleSwapInnings = async () => {
     if (!window.confirm('Are you sure you want to swap innings?')) return;
     try {
-      await api.post(`/matches/${id}/swap-innings`);
+      await api.post(`/scores/${id}/swap-innings`);
       fetchMatch();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to swap innings');
@@ -162,7 +162,7 @@ const LiveScoringPage = () => {
     if (!activeTeamId || updating) return;
     setUpdating(true);
     try {
-      const res = await api.post(`/matches/${id}/undo`, { teamId: activeTeamId });
+      const res = await api.post(`/scores/${id}/undo`, { teamId: activeTeamId });
       setScores(prev => prev.map(s => s.teamId === activeTeamId ? res.data.data : s));
     } catch (err) {
       alert(err.response?.data?.message || 'Nothing to undo');
@@ -180,7 +180,7 @@ const LiveScoringPage = () => {
     }
     if (!window.confirm('Complete and end this match?')) return;
     try {
-      await api.post(`/matches/${id}/complete`, { winnerId });
+      await api.post(`/scores/${id}/complete`, { winnerId });
       navigate(`/match/${id}/summary`);
     } catch (err) {
       alert('Failed to complete match');

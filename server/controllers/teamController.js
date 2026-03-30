@@ -17,6 +17,7 @@ exports.createTeam = async (req, res) => {
       teamName,
       tournamentId,
       captainId: captainId || req.user.id,
+      createdBy: req.user.id,
       logoURL,
     });
 
@@ -60,6 +61,100 @@ exports.getTeams = async (req, res) => {
       .populate('captainId', 'name email')
       .populate('tournamentId', 'name');
     res.json({ success: true, data: teams });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get all teams created by current user (across all tournaments)
+// @route   GET /api/teams/my-teams
+exports.getMyTeams = async (req, res) => {
+  try {
+    // Find tournaments organized by this user
+    const myTournaments = await Tournament.find({ organizerId: req.user.id }).select('_id');
+    const tournamentIds = myTournaments.map(t => t._id);
+
+    // Find all teams in those tournaments OR explicitly created by this user
+    const teams = await Team.find({
+      $or: [
+        { createdBy: req.user.id },
+        { tournamentId: { $in: tournamentIds } },
+      ],
+    })
+      .populate('players')
+      .populate('captainId', 'name email')
+      .populate('tournamentId', 'name');
+
+    res.json({ success: true, data: teams });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Clone an existing team (with players) into a different tournament
+// @route   POST /api/teams/clone
+exports.cloneTeam = async (req, res) => {
+  try {
+    const { sourceTeamId, targetTournamentId } = req.body;
+
+    const sourceTeam = await Team.findById(sourceTeamId).populate('players');
+    if (!sourceTeam) {
+      return res.status(404).json({ success: false, message: 'Source team not found' });
+    }
+
+    const targetTournament = await Tournament.findById(targetTournamentId);
+    if (!targetTournament) {
+      return res.status(404).json({ success: false, message: 'Target tournament not found' });
+    }
+
+    // Check user owns target tournament
+    if (targetTournament.organizerId.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Not authorized to add teams to this tournament' });
+    }
+
+    // Check if a team with same name already exists in target tournament
+    const existing = await Team.findOne({ teamName: sourceTeam.teamName, tournamentId: targetTournamentId });
+    if (existing) {
+      return res.status(400).json({ success: false, message: `Team "${sourceTeam.teamName}" already exists in this tournament` });
+    }
+
+    // Create the cloned team
+    const clonedTeam = await Team.create({
+      teamName: sourceTeam.teamName,
+      tournamentId: targetTournamentId,
+      captainId: req.user.id,
+      createdBy: req.user.id,
+      logoURL: sourceTeam.logoURL,
+    });
+
+    // Clone players
+    const clonedPlayerIds = [];
+    for (const player of sourceTeam.players) {
+      const clonedPlayer = await Player.create({
+        name: player.name,
+        role: player.role,
+        battingStyle: player.battingStyle,
+        bowlingStyle: player.bowlingStyle,
+        teamId: clonedTeam._id,
+      });
+      clonedPlayerIds.push(clonedPlayer._id);
+    }
+
+    clonedTeam.players = clonedPlayerIds;
+    clonedTeam.playerNumber = clonedPlayerIds.length;
+    await clonedTeam.save();
+
+    // Add team to tournament
+    targetTournament.teams.push(clonedTeam._id);
+    await targetTournament.save();
+
+    // Return populated team
+    const populated = await Team.findById(clonedTeam._id)
+      .populate('players')
+      .populate('captainId', 'name email')
+      .populate('tournamentId', 'name');
+
+    res.status(201).json({ success: true, data: populated });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

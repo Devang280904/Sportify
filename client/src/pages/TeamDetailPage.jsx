@@ -141,8 +141,14 @@ const TeamDetailPage = () => {
   if (!team) return <div className="card text-center py-12"><p className="text-txt-muted">Team not found</p></div>;
 
   // Check if user owns this team
-  const isTeamOwner = user && (user._id === team.createdBy?._id || user._id === team.createdBy || user.id === team.createdBy?._id || user.id === team.createdBy);
-  const isTournamentOrganizer = user && (user._id === team.tournamentId?.organizerId?._id || user.id === team.tournamentId?.organizerId?._id || user._id === team.tournamentId?.organizerId || user.id === team.tournamentId?.organizerId);
+  const isTeamOwner = user && team.createdBy && (
+    user._id?.toString() === team.createdBy._id?.toString() ||
+    user.id?.toString() === team.createdBy._id?.toString()
+  );
+  const isTournamentOrganizer = user && team.tournamentId?.organizerId && (
+    user._id?.toString() === team.tournamentId.organizerId._id?.toString() ||
+    user.id?.toString() === team.tournamentId.organizerId._id?.toString()
+  );
   const canEdit = isTeamOwner || isTournamentOrganizer;
 
   return (

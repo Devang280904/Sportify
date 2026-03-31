@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { HiOutlinePlus, HiOutlineX, HiOutlineTrash } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineX, HiOutlineTrash, HiOutlineSearch } from 'react-icons/hi';
 
 const TeamsPage = () => {
   const { user } = useAuth();
@@ -14,6 +14,7 @@ const TeamsPage = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('myTeams');
   const [form, setForm] = useState({ teamName: '', tournamentId: searchParams.get('tournamentId') || '' });
+  const [searchQuery, setSearchQuery] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { fetchData(); }, []);
@@ -81,13 +82,25 @@ const TeamsPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-bold text-txt-primary">Teams</h1>
-        {user && (
-          <button onClick={() => setShowModal(true)} className="btn-primary inline-flex items-center space-x-2">
-            <HiOutlinePlus /> <span>New Team</span>
-          </button>
-        )}
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="relative w-full sm:w-64">
+            <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-muted" />
+            <input 
+              type="text" 
+              placeholder="Search teams..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input pl-10 h-10 text-sm"
+            />
+          </div>
+          {user && (
+            <button onClick={() => setShowModal(true)} className="btn-primary inline-flex items-center space-x-2 h-10 px-4">
+              <HiOutlinePlus /> <span>New Team</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -117,25 +130,22 @@ const TeamsPage = () => {
       {/* Teams Grid */}
       {(() => {
         const userId = user?.id || user?._id;
-        const filteredTeams = filter === 'myTeams' 
-          ? teams.filter(t => {
-              const creatorId = t.createdBy?._id || t.createdBy;
-              const isCreator = userId && creatorId && userId.toString() === creatorId.toString();
-              const isAnyOrganizer = userId && t.tournamentIds?.some(tout => {
-                const orgId = tout.organizerId?._id || tout.organizerId;
-                return orgId && orgId.toString() === userId.toString();
-              });
-              return isCreator || isAnyOrganizer;
-            })
-          : teams.filter(t => {
-              const creatorId = t.createdBy?._id || t.createdBy;
-              const isCreator = userId && creatorId && userId.toString() === creatorId.toString();
-              const isAnyOrganizer = userId && t.tournamentIds?.some(tout => {
-                const orgId = tout.organizerId?._id || tout.organizerId;
-                return orgId && orgId.toString() === userId.toString();
-              });
-              return !isCreator && !isAnyOrganizer;
+        const filteredTeams = teams.filter(t => {
+            const creatorId = t.createdBy?._id || t.createdBy;
+            const isCreator = userId && creatorId && userId.toString() === creatorId.toString();
+            const isAnyOrganizer = userId && t.tournamentIds?.some(tout => {
+              const orgId = tout.organizerId?._id || tout.organizerId;
+              return orgId && orgId.toString() === userId.toString();
             });
+            const isMine = isCreator || isAnyOrganizer;
+            
+            // Search filter
+            const matchesSearch = t.teamName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                 (t.tournamentIds?.[0]?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+            
+            if (!matchesSearch) return false;
+            return filter === 'myTeams' ? isMine : !isMine;
+        });
 
         return filteredTeams.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in">

@@ -44,9 +44,25 @@ const DashboardPage = () => {
       handleDeleteMatch(data.matchId);
     });
 
+    socket.on('matchCompleted', (data) => {
+      setLiveMatches(prev => prev.filter(m => m._id !== data.matchId));
+      // Re-fetch or manually construct a basic match object for the 'Recent' list
+      // For speed, we'll just re-fetch the match list or move the existing one
+      setRecentMatches(prev => {
+        // Find the match in liveMatches if it exists
+        const finishedMatch = liveMatches.find(m => m._id === data.matchId);
+        if (finishedMatch) {
+          const updatedMatch = { ...finishedMatch, status: 'completed', winnerId: data.winnerId };
+          return [updatedMatch, ...prev.slice(0, 5)];
+        }
+        return prev;
+      });
+    });
+
     return () => {
       socket.off('scoreUpdated');
       socket.off('matchDeleted');
+      socket.off('matchCompleted');
     };
   }, [socket]);
 

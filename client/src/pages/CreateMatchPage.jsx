@@ -186,16 +186,17 @@ const CreateMatchPage = () => {
           </div>
 
           {!form.tournamentId && (
-            <div>
-              <label className="label">Exact Players Required</label>
-              <input type="number" min="2" max="11" value={form.playersPerTeam} onChange={e => setForm({ ...form, playersPerTeam: Number(e.target.value) })}
-                className="input" required />
+            <div className="bg-primary/5 p-4 rounded-xl border border-primary/10">
+              <label className="label text-primary font-bold">Required Players Per Team</label>
+              <p className="text-[10px] text-txt-muted mb-2 uppercase font-medium">Both teams must have exactly this many players to start the match.</p>
+              <input type="number" min="2" max="22" value={form.playersPerTeam} onChange={e => setForm({ ...form, playersPerTeam: Number(e.target.value) })}
+                className="input border-primary/20 focus:border-primary" required />
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Team 1</label>
+              <label className="label font-bold">Team 1 (Batting/Bowling)</label>
               <select value={form.team1Id} onChange={e => setForm({...form, team1Id: e.target.value})}
                 className="input" required>
                 <option value="">Select team</option>
@@ -204,15 +205,15 @@ const CreateMatchPage = () => {
                   const req = getRequiredPlayers();
                   const isComplete = playerCount === req;
                   return (
-                    <option key={t._id} value={t._id}>
-                      {t.teamName} ({playerCount}/{req}) {isComplete ? '✓' : ''}
+                    <option key={t._id} value={t._id} className={!isComplete ? 'text-txt-muted' : 'text-txt-primary font-bold'}>
+                      {t.teamName} ({playerCount}/{req}) {isComplete ? '✓' : ' (Incomplete)'}
                     </option>
                   );
                 })}
               </select>
             </div>
             <div>
-              <label className="label">Team 2</label>
+              <label className="label font-bold">Team 2 (Opponent)</label>
               <select value={form.team2Id} onChange={e => setForm({...form, team2Id: e.target.value})}
                 className="input" required>
                 <option value="">Select team</option>
@@ -221,8 +222,8 @@ const CreateMatchPage = () => {
                   const req = getRequiredPlayers();
                   const isComplete = playerCount === req;
                   return (
-                    <option key={t._id} value={t._id}>
-                      {t.teamName} ({playerCount}/{req}) {isComplete ? '✓' : ''}
+                    <option key={t._id} value={t._id} className={!isComplete ? 'text-txt-muted' : 'text-txt-primary font-bold'}>
+                      {t.teamName} ({playerCount}/{req}) {isComplete ? '✓' : ' (Incomplete)'}
                     </option>
                   );
                 })}

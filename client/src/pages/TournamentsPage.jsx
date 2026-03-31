@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { HiOutlinePlus, HiOutlineX, HiOutlineCalendar, HiOutlineTrash } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineX, HiOutlineCalendar, HiOutlineTrash, HiOutlineSearch } from 'react-icons/hi';
 
 const TournamentsPage = () => {
   const { user } = useAuth();
@@ -128,10 +128,18 @@ const TournamentsPage = () => {
     return 'live';
   };
 
+  const [searchQuery, setSearchQuery] = useState('');
+
   const viewFiltered = tournaments.filter(t => {
     const userId = user?.id || user?._id;
     const organizerId = t.organizerId?._id || t.organizerId;
     const isMine = userId && organizerId && userId.toString() === organizerId.toString();
+    
+    // Search filter
+    const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (t.organizerId?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (!matchesSearch) return false;
     return view === 'my' ? isMine : !isMine;
   });
 
@@ -169,7 +177,17 @@ const TournamentsPage = () => {
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="relative w-full sm:w-64">
+            <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-muted" />
+            <input 
+              type="text" 
+              placeholder="Search tournaments..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input pl-10 h-10 text-sm"
+            />
+          </div>
           <div className="flex bg-surface-card rounded-lg border border-surface-border p-1">
             {['all', 'upcoming', 'ongoing', 'completed'].map(f => (
               <button key={f} onClick={() => setFilter(f)}
@@ -178,7 +196,7 @@ const TournamentsPage = () => {
             ))}
           </div>
           {user && (
-            <button onClick={() => setShowModal(true)} className="btn-primary inline-flex items-center space-x-2">
+            <button onClick={() => setShowModal(true)} className="btn-primary inline-flex items-center space-x-2 h-10 px-4">
               <HiOutlinePlus /> <span>New Tournament</span>
             </button>
           )}

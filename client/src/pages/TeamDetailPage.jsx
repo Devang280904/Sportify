@@ -66,14 +66,14 @@ const TeamDetailPage = () => {
       'Virat Kohli,batsman,Right handed,NA',
       'Jasprit Bumrah,bowler,Right handed,right arm pacer',
       'Ravindra Jadeja,allrounder,Left handed,left arm spinner',
-      'Trent Boult,bowler,Right handed,left arm pacer',
+      'MS Dhoni,wicketkeeper,Right handed,NA',
       'Rashid Khan,bowler,Right handed,right arm spinner',
-      'Yuzvendra Chahal,bowler,Right handed,right arm spinner',
-      'Mitchell Starc,bowler,Left handed,left arm pacer',
-      'Axar Patel,allrounder,Left handed,left arm spinner',
-      'Bhuvneshwar Kumar,bowler,Right handed,right arm pacer',
-      'Kuldeep Yadav,bowler,Left handed,left arm spinner',
-      'Adam Zampa,bowler,Right handed,right arm spinner'
+      'Trent Boult,bowler,Right handed,left arm pacer',
+      'Glenn Maxwell,allrounder,Right handed,right arm spinner',
+      'Jos Buttler,wicketkeeper,Right handed,NA',
+      'Adam Zampa,bowler,Right handed,right arm spinner',
+      'Yuvvraj Singh,allrounder,Left handed,left arm spinner',
+      'Hardik Pandya,allrounder,Right handed,right arm pacer'
     ];
     const blob = new Blob([headers + examplePlayers.join('\n')], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);

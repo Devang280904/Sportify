@@ -117,10 +117,10 @@ const ScoreCard = ({ match, scores, onDelete }) => {
       {match.venue && (
         <div className="mt-3 pt-3 border-t border-surface-border">
           <p className="text-xs text-txt-muted">📍 {match.venue}</p>
-          <p className="text-xs text-txt-muted">
-            📅 {new Date(match.matchDate).toLocaleDateString('en-US', {
-              year: 'numeric', month: 'short', day: 'numeric'
-            })}
+          <p className="text-xs text-txt-muted flex items-center gap-1">
+            <span>📅 {new Date(match.matchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+            <span className="opacity-40">•</span>
+            <span>{new Date(match.matchDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
           </p>
         </div>
       )}

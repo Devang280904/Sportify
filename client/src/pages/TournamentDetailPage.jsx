@@ -118,7 +118,7 @@ const TournamentDetailPage = () => {
   // Filter my teams by search query
   const filteredMyTeams = myTeams.filter((t) =>
     t.teamName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (t.tournamentId?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
+    (t.tournamentIds?.[0]?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Check if team already exists in current tournament

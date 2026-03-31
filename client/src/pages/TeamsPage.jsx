@@ -67,11 +67,8 @@ const TeamsPage = () => {
   const canDelete = (team) => {
     if (!user) return false;
     const userId = user.id || user._id;
-    const tournament = tournaments.find(t => t._id === (team.tournamentId?._id || team.tournamentId));
-    const organizerId = tournament?.organizerId?._id || tournament?.organizerId;
     const creatorId = team.createdBy?._id || team.createdBy;
-    return (userId && organizerId && userId.toString() === organizerId.toString()) || 
-           (userId && creatorId && userId.toString() === creatorId.toString());
+    return userId && creatorId && userId.toString() === creatorId.toString();
   };
 
   if (loading) {
@@ -123,21 +120,21 @@ const TeamsPage = () => {
         const filteredTeams = filter === 'myTeams' 
           ? teams.filter(t => {
               const creatorId = t.createdBy?._id || t.createdBy;
-              const organizerId = t.tournamentId?.organizerId?._id || t.tournamentId?.organizerId;
-              // Show in "My Teams" if user created it OR is the tournament organizer
-              return userId && (
-                (creatorId && userId.toString() === creatorId.toString()) ||
-                (organizerId && userId.toString() === organizerId.toString())
-              );
+              const isCreator = userId && creatorId && userId.toString() === creatorId.toString();
+              const isAnyOrganizer = userId && t.tournamentIds?.some(tout => {
+                const orgId = tout.organizerId?._id || tout.organizerId;
+                return orgId && orgId.toString() === userId.toString();
+              });
+              return isCreator || isAnyOrganizer;
             })
           : teams.filter(t => {
               const creatorId = t.createdBy?._id || t.createdBy;
-              const organizerId = t.tournamentId?.organizerId?._id || t.tournamentId?.organizerId;
-              // Show in "Other Teams" if user didn't create it AND is not the organizer
-              return userId && !(
-                (creatorId && userId.toString() === creatorId.toString()) ||
-                (organizerId && userId.toString() === organizerId.toString())
-              );
+              const isCreator = userId && creatorId && userId.toString() === creatorId.toString();
+              const isAnyOrganizer = userId && t.tournamentIds?.some(tout => {
+                const orgId = tout.organizerId?._id || tout.organizerId;
+                return orgId && orgId.toString() === userId.toString();
+              });
+              return !isCreator && !isAnyOrganizer;
             });
 
         return filteredTeams.length > 0 ? (
@@ -153,7 +150,10 @@ const TeamsPage = () => {
                       <h3 className="font-semibold text-txt-primary group-hover:text-primary transition-colors pr-8">
                         {team.teamName}
                       </h3>
-                      <p className="text-sm text-txt-secondary">{team.tournamentId?.name || 'No tournament'}</p>
+                      <p className="text-sm text-txt-secondary">
+                        {team.tournamentIds?.[0]?.name || 'Global Team'}
+                        {team.tournamentIds?.length > 1 && ` (+${team.tournamentIds.length - 1} more)`}
+                      </p>
                       <p className="text-xs text-txt-muted mt-1">{team.players?.length || 0}/11 players</p>
                     </div>
                   </div>
@@ -213,10 +213,10 @@ const TeamsPage = () => {
                   className="input" placeholder="Mumbai Indians" required />
               </div>
               <div>
-                <label className="label">Tournament</label>
+                <label className="label">Tournament (Optional)</label>
                 <select value={form.tournamentId} onChange={e => setForm({...form, tournamentId: e.target.value})}
-                  className="input" required>
-                  <option value="">Select tournament</option>
+                  className="input">
+                  <option value="">No Tournament (Global Team)</option>
                   {tournaments.map(t => (
                     <option key={t._id} value={t._id}>{t.name}</option>
                   ))}

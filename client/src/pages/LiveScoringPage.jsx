@@ -15,6 +15,7 @@ const LiveScoringPage = () => {
   const [match, setMatch] = useState(null);
   const [scores, setScores] = useState([]);
   const [activeTeamId, setActiveTeamId] = useState(null);
+  const [matchResult, setMatchResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
@@ -38,7 +39,10 @@ const LiveScoringPage = () => {
         }
       });
       socket.on('inningsSwapped', () => fetchMatch());
-      socket.on('matchCompleted', () => navigate(`/match/${id}/summary`));
+      socket.on('matchCompleted', (data) => {
+        setMatchResult(data?.resultMessage || "Match Completed");
+        fetchMatch(); // Catch final status
+      });
     }
     return () => {
       if (socket) {
@@ -57,9 +61,9 @@ const LiveScoringPage = () => {
       setScores(res.data.data.scores);
 
       if (matchData.battingTeamId) {
-        setActiveTeamId(matchData.battingTeamId);
+        setActiveTeamId(matchData.battingTeamId.toString());
       } else if (res.data.data.scores.length > 0) {
-        setActiveTeamId(res.data.data.scores[0].teamId);
+        setActiveTeamId(res.data.data.scores[0].teamId.toString());
       }
 
       // Fetch player lists for teams
@@ -77,11 +81,11 @@ const LiveScoringPage = () => {
     }
   };
 
-  const activeScore = scores.find(s => s.teamId === activeTeamId);
-  const battingTeam = activeTeamId === match?.team1Id?._id ? match?.team1Id : match?.team2Id;
-  const bowlingTeam = activeTeamId === match?.team1Id?._id ? match?.team2Id : match?.team1Id;
-  const battingPlayers = activeTeamId === match?.team1Id?._id ? team1Players : team2Players;
-  const bowlingPlayers = activeTeamId === match?.team1Id?._id ? team2Players : team1Players;
+  const activeScore = scores.find(s => s.teamId.toString() === activeTeamId?.toString());
+  const battingTeam = activeTeamId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? match?.team1Id : match?.team2Id;
+  const bowlingTeam = activeTeamId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? match?.team2Id : match?.team1Id;
+  const battingPlayers = activeTeamId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? team1Players : team2Players;
+  const bowlingPlayers = activeTeamId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? team2Players : team1Players;
 
   const updateScore = async (runs, type = 'normal', description = '') => {
     if (!activeTeamId || updating) return;
@@ -128,7 +132,8 @@ const LiveScoringPage = () => {
       else payload.nonStrikerId = playerId;
 
       const res = await api.post(`/matches/${id}/set-batsmen`, payload);
-      setScores(prev => prev.map(s => s.teamId === activeTeamId ? res.data.data : s));
+      const updatedScore = res.data.data;
+      setScores(prev => prev.map(s => s.teamId.toString() === activeTeamId.toString() ? updatedScore : s));
       setShowBatsmanModal(false);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to set batsman');
@@ -218,7 +223,30 @@ const LiveScoringPage = () => {
   const availableBowlers = bowlingPlayers.filter(player => player._id !== restrictedBowlerId);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-20">
+    <div className="max-w-4xl mx-auto space-y-6 pb-20 relative">
+      {/* Match Result Overlay */}
+      {(matchResult || match.status === 'completed') && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
+          <div className="bg-white rounded-3xl p-10 text-center shadow-2xl max-w-sm w-full animate-bounce-in">
+             <div className="w-24 h-24 bg-accent/10 text-accent rounded-full flex items-center justify-center mx-auto mb-6">
+                <MdSportsCricket className="text-5xl" />
+             </div>
+             <h2 className="text-2xl font-black text-txt-primary uppercase tracking-wider mb-2">Match Over!</h2>
+             <p className="text-xl font-bold text-primary mb-8 px-4 py-2 bg-primary/5 rounded-full inline-block">
+                {matchResult || match.resultMessage || "Match Finished"}
+             </p>
+             <div className="space-y-3">
+               <button onClick={() => navigate(`/match/${id}/summary`)} className="btn-primary w-full py-3.5 text-base font-black uppercase tracking-widest">
+                  View Full Summary
+               </button>
+               <button onClick={() => navigate('/fixtures')} className="btn-outline w-full py-3 text-sm font-bold uppercase tracking-widest border-2">
+                  Return to Fixtures
+               </button>
+             </div>
+          </div>
+        </div>
+      )}
+
       {/* Match Header Scoreboard */}
       <div className="card bg-gradient-to-br from-primary-dark to-primary text-white overflow-hidden relative">
         <div className="absolute top-0 right-0 p-4"><LiveIndicator size="md" /></div>

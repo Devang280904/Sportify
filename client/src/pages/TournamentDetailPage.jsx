@@ -31,11 +31,16 @@ const TournamentDetailPage = () => {
 
   const fetchData = async () => {
     try {
-      const [tRes, mRes] = await Promise.all([
+      const [tRes, mRes, teamsRes] = await Promise.all([
         api.get(`/tournaments/${id}`),
         api.get(`/matches?tournamentId=${id}`),
+        api.get(`/teams?tournamentId=${id}`),
       ]);
-      setTournament(tRes.data.data);
+      // Use the separate teams fetch for the display
+      const tournamentData = tRes.data.data;
+      tournamentData.teams = teamsRes.data.data;
+      
+      setTournament(tournamentData);
       setMatches(mRes.data.data);
     } catch (err) {
       console.error(err);
@@ -47,10 +52,10 @@ const TournamentDetailPage = () => {
   const fetchMyTeams = async () => {
     setMyTeamsLoading(true);
     try {
-      const res = await api.get('/teams/my-teams');
+      const res = await api.get('/teams');
       // Filter out teams that already belong to THIS tournament
       const filtered = res.data.data.filter(
-        (t) => (t.tournamentId?._id || t.tournamentId) !== id
+        (t) => !t.tournamentIds?.some(tid => (tid._id || tid) === id)
       );
       setMyTeams(filtered);
     } catch (err) {
@@ -96,15 +101,15 @@ const TournamentDetailPage = () => {
     }
   };
 
-  const handleCloneTeam = async (teamId, teamName) => {
+  const handleLinkTeam = async (teamId, teamName) => {
     setSaving(true);
     try {
-      await api.post('/teams/clone', { sourceTeamId: teamId, targetTournamentId: id });
+      await api.post('/teams/link', { sourceTeamId: teamId, targetTournamentId: id });
       setClonedTeamIds((prev) => new Set([...prev, teamId]));
-      showToast(`Team "${teamName}" added with all players!`);
+      showToast(`Team "${teamName}" linked successfully!`);
       fetchData();
     } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to add team', 'error');
+      showToast(err.response?.data?.message || 'Failed to link team', 'error');
     } finally {
       setSaving(false);
     }
@@ -118,7 +123,7 @@ const TournamentDetailPage = () => {
 
   // Check if team already exists in current tournament
   const isAlreadyInTournament = (teamName) => {
-    return tournament?.teams?.some((t) => t.teamName === teamName);
+    return tournament?.teams?.some((t) => t.teamName.trim().toLowerCase() === teamName.trim().toLowerCase());
   };
 
   const getEffectiveStatus = () => {
@@ -210,7 +215,9 @@ const TournamentDetailPage = () => {
               </span>
             </div>
           </div>
-          <span className={`badge text-sm ${statusColor[tournament.status]}`}>{tournament.status}</span>
+          <span className={`badge text-sm ${statusColor[getEffectiveStatus()]}`}>
+            {getEffectiveStatus().toUpperCase()}
+          </span>
         </div>
       </div>
 
@@ -344,7 +351,7 @@ const TournamentDetailPage = () => {
               >
                 <div className="flex items-center justify-center gap-2">
                   <HiOutlineClipboardCopy className="text-base" />
-                  My Teams
+                  Existing Teams
                 </div>
               </button>
             </div>
@@ -393,7 +400,7 @@ const TournamentDetailPage = () => {
                   {/* Search */}
                   <div className="p-6 pb-3">
                     <p className="text-sm text-txt-secondary mb-3">
-                      Add teams from your other tournaments. Players will be cloned along with the team.
+                      Link existing teams to this tournament. <strong className="text-primary font-medium">Requires exactly {tournament.playersPerTeam || 11} players.</strong>
                     </p>
                     <div className="relative">
                       <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-muted" />
@@ -401,7 +408,7 @@ const TournamentDetailPage = () => {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="input pl-10"
-                        placeholder="Search teams by name or tournament..."
+                        placeholder="Search teams globally..."
                       />
                     </div>
                   </div>
@@ -435,8 +442,8 @@ const TournamentDetailPage = () => {
                                     {team.tournamentId?.name || 'Unknown tournament'}
                                   </span>
                                   <span className="text-xs text-txt-muted">•</span>
-                                  <span className="text-xs text-txt-muted whitespace-nowrap">
-                                    {team.players?.length || 0} players
+                                  <span className={`text-xs whitespace-nowrap ${team.players?.length === (tournament?.playersPerTeam || 11) ? 'text-green-600' : 'text-danger'}`}>
+                                    {team.players?.length || 0}/{tournament?.playersPerTeam || 11} players
                                   </span>
                                 </div>
                               </div>
@@ -448,9 +455,10 @@ const TournamentDetailPage = () => {
                                 </span>
                               ) : (
                                 <button
-                                  onClick={() => handleCloneTeam(team._id, team.teamName)}
-                                  disabled={saving}
-                                  className="btn-primary text-xs py-1.5 px-3 inline-flex items-center gap-1"
+                                  onClick={() => handleLinkTeam(team._id, team.teamName)}
+                                  disabled={saving || (team.players?.length || 0) !== (tournament?.playersPerTeam || 11)}
+                                  className={`btn-primary text-xs py-1.5 px-3 inline-flex items-center gap-1 ${(team.players?.length || 0) !== (tournament?.playersPerTeam || 11) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  title={(team.players?.length || 0) !== (tournament?.playersPerTeam || 11) ? `Team must have exactly ${tournament?.playersPerTeam || 11} players` : ''}
                                 >
                                   {saving ? (
                                     <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
@@ -472,10 +480,10 @@ const TournamentDetailPage = () => {
                         <p className="text-sm text-txt-muted">
                           {searchQuery
                             ? 'No teams match your search.'
-                            : 'No teams found from your other tournaments.'}
+                            : 'No global teams found yet.'}
                         </p>
                         <p className="text-xs text-txt-muted mt-1">
-                          {!searchQuery && 'Create teams in other tournaments first to see them here.'}
+                          {!searchQuery && 'Create teams globally first to see them here.'}
                         </p>
                       </div>
                     )}

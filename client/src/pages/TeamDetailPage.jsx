@@ -64,16 +64,16 @@ const TeamDetailPage = () => {
     const headers = 'name,role,battingStyle,bowlingStyle\n';
     const examplePlayers = [
       'Virat Kohli,batsman,Right handed,NA',
-      'Rohit Sharma,batsman,Right handed,NA',
       'Jasprit Bumrah,bowler,Right handed,right arm pacer',
-      'MS Dhoni,wicketkeeper,Right handed,NA',
       'Ravindra Jadeja,allrounder,Left handed,left arm spinner',
-      'KL Rahul,wicketkeeper,Right handed,NA',
-      'Hardik Pandya,allrounder,Right handed,right arm pacer',
-      'Mohammed Shami,bowler,Right handed,right arm pacer',
-      'Rishabh Pant,wicketkeeper,Left handed,NA',
-      'Suryakumar Yadav,batsman,Right handed,NA',
-      'Yuzvendra Chahal,bowler,Right handed,right arm spinner'
+      'Trent Boult,bowler,Right handed,left arm pacer',
+      'Rashid Khan,bowler,Right handed,right arm spinner',
+      'Yuzvendra Chahal,bowler,Right handed,right arm spinner',
+      'Mitchell Starc,bowler,Left handed,left arm pacer',
+      'Axar Patel,allrounder,Left handed,left arm spinner',
+      'Bhuvneshwar Kumar,bowler,Right handed,right arm pacer',
+      'Kuldeep Yadav,bowler,Left handed,left arm spinner',
+      'Adam Zampa,bowler,Right handed,right arm spinner'
     ];
     const blob = new Blob([headers + examplePlayers.join('\n')], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -162,7 +162,9 @@ const TeamDetailPage = () => {
           <div>
             <h1 className="text-2xl font-bold text-txt-primary">{team.teamName}</h1>
             <p className="text-txt-secondary text-sm">
-              {team.tournamentId?.name || 'No tournament'} • <span className={team.players?.length >= 11 ? 'text-accent font-bold' : 'text-txt-muted'}>{team.players?.length || 0}/11 players</span>
+              {team.tournamentIds?.length > 0 
+                ? team.tournamentIds.map(t => t.name).join(', ') 
+                : 'No tournament'} • <span className={team.players?.length >= 11 ? 'text-accent font-bold' : 'text-txt-muted'}>{team.players?.length || 0}/11 players</span>
             </p>
           </div>
         </div>
@@ -182,9 +184,12 @@ const TeamDetailPage = () => {
               </button>
             )}
             <div className="h-8 w-[1px] bg-surface-border mx-1 hidden sm:block"></div>
-            <button onClick={handleDownloadTemplate} className="btn-outline inline-flex items-center space-x-2 text-sm py-2">
-              <HiOutlineDownload /> <span>Download Template (11 Rows)</span>
-            </button>
+            <div className="flex flex-col items-end gap-1">
+              <span className="text-[10px] text-txt-muted font-medium uppercase tracking-tighter">Use exact terms: right arm pacer, left arm spinner, etc.</span>
+              <button onClick={handleDownloadTemplate} className="btn-outline inline-flex items-center space-x-2 text-sm py-2">
+                <HiOutlineDownload /> <span>Download Template (CSV)</span>
+              </button>
+            </div>
             {canEdit && user && team.players.length < 11 && (
               <label className="btn-secondary inline-flex items-center space-x-2 text-sm py-2 cursor-pointer transition-all hover:shadow-lg">
                 <HiOutlineUpload /> <span>CSV Upload</span>

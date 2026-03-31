@@ -13,7 +13,7 @@ const TournamentsPage = () => {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('my');
   const [filter, setFilter] = useState('all');
-  const [form, setForm] = useState({ name: '', startDate: '', endDate: '' });
+  const [form, setForm] = useState({ name: '', startDate: '', endDate: '', playersPerTeam: 11 });
   const [saving, setSaving] = useState(false);
   const [dateError, setDateError] = useState('');
   const [todayDate, setTodayDate] = useState('');
@@ -70,7 +70,7 @@ const TournamentsPage = () => {
     try {
       const res = await api.post('/tournaments', form);
       setShowModal(false);
-      setForm({ name: '', startDate: '', endDate: '' });
+      setForm({ name: '', startDate: '', endDate: '', playersPerTeam: 11 });
       setDateError('');
       // Redirect to the new tournament detail page to add teams
       if (res.data.data?._id) {
@@ -250,6 +250,11 @@ const TournamentsPage = () => {
                     min={todayDate}
                     className="input" required />
                 </div>
+              </div>
+              <div>
+                <label className="label">Players per Team</label>
+                <input type="number" min="2" max="11" value={form.playersPerTeam} onChange={e => setForm({ ...form, playersPerTeam: Number(e.target.value) })}
+                  className="input" required />
               </div>
               {dateError && (
                 <div className="bg-danger/10 border border-danger/20 text-danger text-sm rounded-lg p-3">

@@ -30,7 +30,7 @@ const MatchSummaryPage = () => {
   if (!match) return <div className="card text-center py-12"><p className="text-txt-muted">Match summary not found</p></div>;
 
   const winnerTeam = match.winnerId?._id === match.team1Id?._id ? match.team1Id : match.team2Id;
-  const resultText = match.winnerId ? `${winnerTeam?.teamName} Won by ${Math.abs(scores[0]?.runs - scores[1]?.runs)} runs` : 'Match Drawn';
+  const resultText = match.resultMessage || (match.winnerId ? `${winnerTeam?.teamName || 'A team'} Won` : 'Match Drawn / Completed');
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12">

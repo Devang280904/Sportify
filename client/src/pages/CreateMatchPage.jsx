@@ -11,7 +11,7 @@ const CreateMatchPage = () => {
   const [teams, setTeams] = useState([]);
   const [selectedTournament, setSelectedTournament] = useState(null);
   const [form, setForm] = useState({
-    tournamentId: '', team1Id: '', team2Id: '', matchDate: '', venue: '', totalOvers: 20
+    tournamentId: '', team1Id: '', team2Id: '', matchDate: '', venue: '', totalOvers: 20, playersPerTeam: 11
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -21,10 +21,18 @@ const CreateMatchPage = () => {
     return teams.find(t => t._id === teamId);
   };
 
-  // Check if team has 11 players
+  // Get required players count dynamically
+  const getRequiredPlayers = () => {
+    if (selectedTournament && selectedTournament.playersPerTeam) {
+      return selectedTournament.playersPerTeam;
+    }
+    return form.playersPerTeam || 11;
+  };
+
+  // Check if team has the required amount of players
   const hasCompleteSquad = (teamId) => {
     const team = getTeamDetails(teamId);
-    return team && team.players && team.players.length === 11;
+    return team && team.players && team.players.length === getRequiredPlayers();
   };
 
   // Get player count for display
@@ -86,7 +94,9 @@ const CreateMatchPage = () => {
         .catch(console.error);
     } else {
       setSelectedTournament(null);
-      setTeams([]);
+      api.get('/teams/my-teams')
+        .then(res => setTeams(res.data.data))
+        .catch(console.error);
     }
   }, [form.tournamentId, tournaments]);
 
@@ -101,16 +111,13 @@ const CreateMatchPage = () => {
     // Check if both teams have 11 players
     const team1 = getTeamDetails(form.team1Id);
     const team2 = getTeamDetails(form.team2Id);
-    const team1PlayerCount = team1?.players?.length || 0;
-    const team2PlayerCount = team2?.players?.length || 0;
-
-    if (team1PlayerCount !== 11) {
-      return setError(`${team1?.teamName} needs 11 players but has ${team1PlayerCount}. Please add more players.`);
+    // Validation removed as per user request to allow more flexibility during testing/setup
+    // But we still require team selection
+    if (!form.team1Id || !form.team2Id) {
+      return setError('Please select both teams');
     }
-
-    if (team2PlayerCount !== 11) {
-      return setError(`${team2?.teamName} needs 11 players but has ${team2PlayerCount}. Please add more players.`);
-    }
+    
+    /* Previous strict 11-player constraint was here */
 
     // Frontend Date Validation
     const selectedDate = new Date(form.matchDate);
@@ -169,27 +176,36 @@ const CreateMatchPage = () => {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="label">Tournament</label>
+            <label className="label">Tournament (Optional)</label>
             <select value={form.tournamentId}
               onChange={e => setForm({ ...form, tournamentId: e.target.value, team1Id: '', team2Id: '' })}
-              className="input" required>
-              <option value="">Select tournament</option>
+              className="input">
+              <option value="">No Tournament (Independent Match)</option>
               {tournaments.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
             </select>
           </div>
+
+          {!form.tournamentId && (
+            <div>
+              <label className="label">Exact Players Required</label>
+              <input type="number" min="2" max="11" value={form.playersPerTeam} onChange={e => setForm({ ...form, playersPerTeam: Number(e.target.value) })}
+                className="input" required />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Team 1</label>
               <select value={form.team1Id} onChange={e => setForm({...form, team1Id: e.target.value})}
-                className="input" required disabled={!form.tournamentId}>
+                className="input" required>
                 <option value="">Select team</option>
                 {teams.filter(t => t._id !== form.team2Id).map(t => {
                   const playerCount = t.players?.length || 0;
-                  const isComplete = playerCount === 11;
+                  const req = getRequiredPlayers();
+                  const isComplete = playerCount === req;
                   return (
                     <option key={t._id} value={t._id}>
-                      {t.teamName} ({playerCount}/11) {isComplete ? '✓' : ''}
+                      {t.teamName} ({playerCount}/{req}) {isComplete ? '✓' : ''}
                     </option>
                   );
                 })}
@@ -198,14 +214,15 @@ const CreateMatchPage = () => {
             <div>
               <label className="label">Team 2</label>
               <select value={form.team2Id} onChange={e => setForm({...form, team2Id: e.target.value})}
-                className="input" required disabled={!form.tournamentId}>
+                className="input" required>
                 <option value="">Select team</option>
                 {teams.filter(t => t._id !== form.team1Id).map(t => {
                   const playerCount = t.players?.length || 0;
-                  const isComplete = playerCount === 11;
+                  const req = getRequiredPlayers();
+                  const isComplete = playerCount === req;
                   return (
                     <option key={t._id} value={t._id}>
-                      {t.teamName} ({playerCount}/11) {isComplete ? '✓' : ''}
+                      {t.teamName} ({playerCount}/{req}) {isComplete ? '✓' : ''}
                     </option>
                   );
                 })}
@@ -220,7 +237,7 @@ const CreateMatchPage = () => {
                 min={minDateTime}
                 max={maxDateTime}
                 onChange={e => setForm({...form, matchDate: e.target.value})}
-                className="input" required disabled={!form.tournamentId} />
+                className="input" required />
             </div>
             <div>
               <label className="label">Venue</label>
@@ -240,7 +257,7 @@ const CreateMatchPage = () => {
           </div>
 
           <div className="flex items-center gap-3 pt-2">
-            <button type="submit" disabled={saving || !hasCompleteSquad(form.team1Id) || !hasCompleteSquad(form.team2Id)} className="btn-primary flex-1 py-2.5" title={!hasCompleteSquad(form.team1Id) || !hasCompleteSquad(form.team2Id) ? 'Both teams must have 11 players' : ''}>
+            <button type="submit" disabled={saving || !hasCompleteSquad(form.team1Id) || !hasCompleteSquad(form.team2Id)} className="btn-primary flex-1 py-2.5" title={!hasCompleteSquad(form.team1Id) || !hasCompleteSquad(form.team2Id) ? `Both teams must have ${getRequiredPlayers()} players` : ''}>
               {saving ? 'Creating...' : 'Create Match'}
             </button>
             <button type="button" onClick={() => navigate(-1)} className="btn-outline py-2.5 px-6">

@@ -75,17 +75,29 @@ exports.getMyTeams = async (req, res) => {
     const tournamentIds = myTournaments.map(t => t._id);
 
     // Find all teams in those tournaments OR explicitly created by this user
+    // Sort by createdAt desc so most recent versions are picked first
     const teams = await Team.find({
       $or: [
         { createdBy: req.user.id },
         { tournamentId: { $in: tournamentIds } },
       ],
     })
+      .sort({ createdAt: -1 })
       .populate('players')
       .populate('captainId', 'name email')
       .populate('tournamentId', 'name');
 
-    res.json({ success: true, data: teams });
+    // Deduplicate by teamName (case insensitive)
+    const seenNames = new Set();
+    const uniqueTeams = teams.filter(team => {
+      if (!team.teamName) return false;
+      const lowerName = team.teamName.toLowerCase().trim();
+      if (seenNames.has(lowerName)) return false;
+      seenNames.add(lowerName);
+      return true;
+    });
+
+    res.json({ success: true, data: uniqueTeams });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

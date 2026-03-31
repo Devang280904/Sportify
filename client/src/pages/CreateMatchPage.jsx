@@ -16,6 +16,23 @@ const CreateMatchPage = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // Get team details by ID
+  const getTeamDetails = (teamId) => {
+    return teams.find(t => t._id === teamId);
+  };
+
+  // Check if team has 11 players
+  const hasCompleteSquad = (teamId) => {
+    const team = getTeamDetails(teamId);
+    return team && team.players && team.players.length === 11;
+  };
+
+  // Get player count for display
+  const getPlayerCount = (teamId) => {
+    const team = getTeamDetails(teamId);
+    return team ? (team.players?.length || 0) : 0;
+  };
+
   // Calculate current date and time in the correct local format for the min attribute
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -79,6 +96,20 @@ const CreateMatchPage = () => {
 
     if (form.team1Id === form.team2Id) {
       return setError('Team 1 and Team 2 cannot be the same');
+    }
+
+    // Check if both teams have 11 players
+    const team1 = getTeamDetails(form.team1Id);
+    const team2 = getTeamDetails(form.team2Id);
+    const team1PlayerCount = team1?.players?.length || 0;
+    const team2PlayerCount = team2?.players?.length || 0;
+
+    if (team1PlayerCount !== 11) {
+      return setError(`${team1?.teamName} needs 11 players but has ${team1PlayerCount}. Please add more players.`);
+    }
+
+    if (team2PlayerCount !== 11) {
+      return setError(`${team2?.teamName} needs 11 players but has ${team2PlayerCount}. Please add more players.`);
     }
 
     // Frontend Date Validation
@@ -153,9 +184,15 @@ const CreateMatchPage = () => {
               <select value={form.team1Id} onChange={e => setForm({...form, team1Id: e.target.value})}
                 className="input" required disabled={!form.tournamentId}>
                 <option value="">Select team</option>
-                {teams.filter(t => t._id !== form.team2Id).map(t => (
-                  <option key={t._id} value={t._id}>{t.teamName}</option>
-                ))}
+                {teams.filter(t => t._id !== form.team2Id).map(t => {
+                  const playerCount = t.players?.length || 0;
+                  const isComplete = playerCount === 11;
+                  return (
+                    <option key={t._id} value={t._id}>
+                      {t.teamName} ({playerCount}/11) {isComplete ? '✓' : ''}
+                    </option>
+                  );
+                })}
               </select>
             </div>
             <div>
@@ -163,9 +200,15 @@ const CreateMatchPage = () => {
               <select value={form.team2Id} onChange={e => setForm({...form, team2Id: e.target.value})}
                 className="input" required disabled={!form.tournamentId}>
                 <option value="">Select team</option>
-                {teams.filter(t => t._id !== form.team1Id).map(t => (
-                  <option key={t._id} value={t._id}>{t.teamName}</option>
-                ))}
+                {teams.filter(t => t._id !== form.team1Id).map(t => {
+                  const playerCount = t.players?.length || 0;
+                  const isComplete = playerCount === 11;
+                  return (
+                    <option key={t._id} value={t._id}>
+                      {t.teamName} ({playerCount}/11) {isComplete ? '✓' : ''}
+                    </option>
+                  );
+                })}
               </select>
             </div>
           </div>
@@ -197,7 +240,7 @@ const CreateMatchPage = () => {
           </div>
 
           <div className="flex items-center gap-3 pt-2">
-            <button type="submit" disabled={saving} className="btn-primary flex-1 py-2.5">
+            <button type="submit" disabled={saving || !hasCompleteSquad(form.team1Id) || !hasCompleteSquad(form.team2Id)} className="btn-primary flex-1 py-2.5" title={!hasCompleteSquad(form.team1Id) || !hasCompleteSquad(form.team2Id) ? 'Both teams must have 11 players' : ''}>
               {saving ? 'Creating...' : 'Create Match'}
             </button>
             <button type="button" onClick={() => navigate(-1)} className="btn-outline py-2.5 px-6">

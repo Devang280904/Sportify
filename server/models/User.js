@@ -48,6 +48,7 @@ const userSchema = new mongoose.Schema({
   timestamps: true,
 });
 
+// userSchema.index({ email: 1 });
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
@@ -67,11 +68,9 @@ userSchema.methods.isLocked = function () {
 userSchema.methods.generateResetOTP = function () {
   // Generate 6 digit OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  
   // Hash it before saving to DB
   this.resetPasswordToken = crypto.createHash('sha256').update(otp).digest('hex');
   this.resetPasswordExpire = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-  
   return otp;
 };
 

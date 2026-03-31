@@ -40,31 +40,31 @@ const TournamentsPage = () => {
 
   const validateDates = (startDate, endDate) => {
     if (!startDate || !endDate) return '';
-    
+
     if (startDate < todayDate) {
       return 'Start date cannot be before today.';
     }
-    
+
     if (endDate < todayDate) {
       return 'End date cannot be before today.';
     }
-    
+
     if (endDate < startDate) {
       return 'End date must be equal to or after the start date.';
     }
-    
+
     return '';
   };
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    
+
     const error = validateDates(form.startDate, form.endDate);
     if (error) {
       setDateError(error);
       return;
     }
-    
+
     setSaving(true);
     try {
       const res = await api.post('/tournaments', form);
@@ -87,7 +87,7 @@ const TournamentsPage = () => {
   const handleDateChange = (field, value) => {
     const newForm = { ...form, [field]: value };
     setForm(newForm);
-    
+
     // Validate dates as user types
     const error = validateDates(newForm.startDate, newForm.endDate);
     setDateError(error);
@@ -136,9 +136,8 @@ const TournamentsPage = () => {
           <div className="flex bg-surface-card rounded-lg border border-surface-border p-1">
             {['all', 'upcoming', 'ongoing', 'completed'].map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-all ${
-                  filter === f ? 'bg-primary text-white shadow-sm' : 'text-txt-secondary hover:text-primary'
-                }`}>{f}</button>
+                className={`px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-all ${filter === f ? 'bg-primary text-white shadow-sm' : 'text-txt-secondary hover:text-primary'
+                  }`}>{f}</button>
             ))}
           </div>
           {user && (
@@ -169,9 +168,9 @@ const TournamentsPage = () => {
                   <p className="text-txt-muted text-xs">Organizer: {t.organizerId?.name || 'N/A'}</p>
                 </div>
               </Link>
-              
+
               {canDelete(t) && (
-                <button 
+                <button
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowDeleteModal(t); }}
                   className="absolute top-4 right-4 p-2 text-txt-muted hover:text-danger hover:bg-danger/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
                   title="Delete Tournament"
@@ -201,7 +200,7 @@ const TournamentsPage = () => {
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
                 <label className="label">Tournament Name</label>
-                <input value={form.name} onChange={e => setForm({...form, name: e.target.value})}
+                <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                   className="input" placeholder="IPL 2026" required />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -242,19 +241,19 @@ const TournamentsPage = () => {
             </div>
             <h2 className="text-xl font-bold text-center text-txt-primary mb-2">Delete Tournament?</h2>
             <p className="text-center text-txt-secondary mb-6">
-              Are you sure you want to delete <span className="font-bold text-txt-primary">{showDeleteModal.name}</span>?<br/>
+              Are you sure you want to delete <span className="font-bold text-txt-primary">{showDeleteModal.name}</span>?<br />
               <span className="text-danger font-medium mt-1 inline-block">This action will also permanently delete all associated teams, matches, and score records. This cannot be undone.</span>
             </p>
             <div className="flex gap-3">
-              <button 
-                onClick={() => setShowDeleteModal(null)} 
+              <button
+                onClick={() => setShowDeleteModal(null)}
                 disabled={saving}
                 className="btn-outline flex-1 py-2.5"
               >
                 Cancel
               </button>
-              <button 
-                onClick={handleDelete} 
+              <button
+                onClick={handleDelete}
                 disabled={saving}
                 className="btn-danger flex-1 py-2.5 shadow-lg shadow-danger/30"
               >

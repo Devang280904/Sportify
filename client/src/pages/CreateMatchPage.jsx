@@ -9,6 +9,7 @@ const CreateMatchPage = () => {
   const { user } = useAuth();
   const [tournaments, setTournaments] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [selectedTournament, setSelectedTournament] = useState(null);
   const [form, setForm] = useState({
     tournamentId: '', team1Id: '', team2Id: '', matchDate: '', venue: '', totalOvers: 20
   });
@@ -19,6 +20,30 @@ const CreateMatchPage = () => {
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
   const currentDateTime = now.toISOString().slice(0, 16);
+
+  // Calculate min/max datetime based on selected tournament
+  const getMinMaxDateTime = () => {
+    if (!selectedTournament) {
+      return { min: currentDateTime, max: '' };
+    }
+
+    const tourStart = new Date(selectedTournament.startDate);
+    tourStart.setHours(0, 0, 0, 0);
+    tourStart.setMinutes(tourStart.getMinutes() - tourStart.getTimezoneOffset());
+    
+    const tourEnd = new Date(selectedTournament.endDate);
+    tourEnd.setHours(23, 59, 59, 999);
+    tourEnd.setMinutes(tourEnd.getMinutes() - tourEnd.getTimezoneOffset());
+
+    // Use the later of tournament start or current time
+    const minDate = tourStart > now ? tourStart : now;
+    const minDateTime = minDate.toISOString().slice(0, 16);
+    const maxDateTime = tourEnd.toISOString().slice(0, 16);
+
+    return { min: minDateTime, max: maxDateTime };
+  };
+
+  const { min: minDateTime, max: maxDateTime } = getMinMaxDateTime();
 
   useEffect(() => {
     api.get('/tournaments')
@@ -35,13 +60,18 @@ const CreateMatchPage = () => {
 
   useEffect(() => {
     if (form.tournamentId) {
+      // Find and set the selected tournament
+      const tournament = tournaments.find(t => t._id === form.tournamentId);
+      setSelectedTournament(tournament);
+      
       api.get(`/teams?tournamentId=${form.tournamentId}`)
         .then(res => setTeams(res.data.data))
         .catch(console.error);
     } else {
+      setSelectedTournament(null);
       setTeams([]);
     }
-  }, [form.tournamentId]);
+  }, [form.tournamentId, tournaments]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -60,6 +90,22 @@ const CreateMatchPage = () => {
 
     if (selectedDate < currentDate) {
       return setError('Match cannot be scheduled in the past. Please select the current time or a future time.');
+    }
+
+    // Tournament date range validation
+    if (selectedTournament) {
+      const tourStart = new Date(selectedTournament.startDate);
+      tourStart.setHours(0, 0, 0, 0);
+      const tourEnd = new Date(selectedTournament.endDate);
+      tourEnd.setHours(23, 59, 59, 999);
+
+      if (selectedDate < tourStart) {
+        return setError(`Match date cannot be before tournament start date (${new Date(selectedTournament.startDate).toLocaleDateString()})`);
+      }
+
+      if (selectedDate > tourEnd) {
+        return setError(`Match date cannot be after tournament end date (${new Date(selectedTournament.endDate).toLocaleDateString()})`);
+      }
     }
 
     setSaving(true);
@@ -128,9 +174,10 @@ const CreateMatchPage = () => {
             <div>
               <label className="label">Match Date & Time</label>
               <input type="datetime-local" value={form.matchDate}
-                min={currentDateTime}
+                min={minDateTime}
+                max={maxDateTime}
                 onChange={e => setForm({...form, matchDate: e.target.value})}
-                className="input" required />
+                className="input" required disabled={!form.tournamentId} />
             </div>
             <div>
               <label className="label">Venue</label>

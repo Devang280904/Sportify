@@ -24,7 +24,7 @@ const playerSchema = new mongoose.Schema({
   },
   bowlingStyle: {
     type: String,
-    enum: ['faster', 'spiner', 'NA'],
+    enum: ['left arm spinner', 'right arm spinner', 'left arm pacer', 'right arm pacer', 'NA'],
     default: 'NA',
   },
   totalRuns: { type: Number, default: 0 },

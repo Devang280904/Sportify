@@ -162,7 +162,7 @@ const TournamentsPage = () => {
         <div className="space-y-1">
           <h1 className="text-2xl font-bold text-txt-primary">Tournaments</h1>
           <div className="flex bg-surface-card rounded-lg border border-surface-border p-1 w-fit">
-            {['my', 'global'].map(v => (
+            {['my', 'other'].map(v => (
               <button key={v} onClick={() => setView(v)}
                 className={`px-4 py-1.5 rounded-md text-xs font-semibold capitalize transition-all ${view === v ? 'bg-primary text-white shadow-sm' : 'text-txt-secondary hover:text-primary'
                   }`}>{v}</button>
@@ -209,16 +209,6 @@ const TournamentsPage = () => {
                     <p className="text-txt-muted text-xs">Organizer: {t.organizerId?.name || 'N/A'}</p>
                   </div>
                 </Link>
-
-                {canDelete(t) && (
-                  <button
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowDeleteModal(t); }}
-                    className="absolute top-4 right-4 p-2 text-txt-muted hover:text-danger hover:bg-danger/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                    title="Delete Tournament"
-                  >
-                    <HiOutlineTrash className="text-lg" />
-                  </button>
-                )}
               </div>
             );
           })}

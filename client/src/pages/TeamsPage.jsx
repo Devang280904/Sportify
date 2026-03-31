@@ -12,6 +12,7 @@ const TeamsPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('myTeams');
   const [form, setForm] = useState({ teamName: '', tournamentId: searchParams.get('tournamentId') || '' });
   const [saving, setSaving] = useState(false);
 
@@ -79,7 +80,7 @@ const TeamsPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-txt-primary">Teams</h1>
         {user && (
           <button onClick={() => setShowModal(true)} className="btn-primary inline-flex items-center space-x-2">
@@ -88,48 +89,91 @@ const TeamsPage = () => {
         )}
       </div>
 
-      {teams.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {teams.map(team => (
-            <div key={team._id} className="card hover:shadow-card-lg transition-all group animate-slide-up relative">
-              <Link to={`/teams/${team._id}`} className="block">
-                <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xl font-bold">
-                    {team.teamName?.charAt(0)}
+      {/* Tabs */}
+      <div className="flex bg-surface-card rounded-lg border border-surface-border p-1">
+        <button 
+          onClick={() => setFilter('myTeams')}
+          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+            filter === 'myTeams' 
+              ? 'bg-primary text-white shadow-sm' 
+              : 'text-txt-secondary hover:text-primary'
+          }`}
+        >
+          My Teams
+        </button>
+        <button 
+          onClick={() => setFilter('otherTeams')}
+          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+            filter === 'otherTeams' 
+              ? 'bg-primary text-white shadow-sm' 
+              : 'text-txt-secondary hover:text-primary'
+          }`}
+        >
+          Other Teams
+        </button>
+      </div>
+
+      {/* Teams Grid */}
+      {(() => {
+        const filteredTeams = filter === 'myTeams' 
+          ? teams.filter(t => t.createdBy === user?._id || t.createdBy === user?.id)
+          : teams.filter(t => t.createdBy !== user?._id && t.createdBy !== user?.id);
+
+        return filteredTeams.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in">
+            {filteredTeams.map(team => (
+              <div key={team._id} className="card hover:shadow-card-lg transition-all group animate-slide-up relative">
+                <Link to={`/teams/${team._id}`} className="block">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xl font-bold">
+                      {team.teamName?.charAt(0)}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-txt-primary group-hover:text-primary transition-colors pr-8">
+                        {team.teamName}
+                      </h3>
+                      <p className="text-sm text-txt-secondary">{team.tournamentId?.name || 'No tournament'}</p>
+                      <p className="text-xs text-txt-muted mt-1">{team.players?.length || 0}/11 players</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-txt-primary group-hover:text-primary transition-colors pr-8">
-                      {team.teamName}
-                    </h3>
-                    <p className="text-sm text-txt-secondary">{team.tournamentId?.name || 'No tournament'}</p>
-                    <p className="text-xs text-txt-muted mt-1">{team.players?.length || 0}/11 players</p>
+                  <div className="mt-4">
+                    <div className="w-full bg-surface rounded-full h-2">
+                      <div className="bg-accent rounded-full h-2 transition-all" 
+                        style={{ width: `${((team.players?.length || 0) / 11) * 100}%` }}></div>
+                    </div>
                   </div>
-                </div>
-                <div className="mt-4">
-                  <div className="w-full bg-surface rounded-full h-2">
-                    <div className="bg-accent rounded-full h-2 transition-all" 
-                      style={{ width: `${((team.players?.length || 0) / 11) * 100}%` }}></div>
-                  </div>
-                </div>
-              </Link>
-              
-              {canDelete(team) && (
-                <button 
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowDeleteModal(team); }}
-                  className="absolute top-4 right-4 p-2 text-txt-muted hover:text-danger hover:bg-danger/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                  title="Delete Team"
-                >
-                  <HiOutlineTrash className="text-lg" />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="card text-center py-12">
-          <p className="text-txt-muted">No teams found.</p>
-        </div>
-      )}
+                </Link>
+                
+                {canDelete(team) && (
+                  <button 
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowDeleteModal(team); }}
+                    className="absolute top-4 right-4 p-2 text-txt-muted hover:text-danger hover:bg-danger/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                    title="Delete Team"
+                  >
+                    <HiOutlineTrash className="text-lg" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="card text-center py-12 bg-surface/50 border-dashed animate-fade-in">
+            <p className="text-txt-muted font-medium">
+              {filter === 'myTeams' 
+                ? 'You haven\'t created any teams yet.' 
+                : 'No teams available.'}
+            </p>
+            {filter === 'myTeams' && user && (
+              <button 
+                onClick={() => setShowModal(true)}
+                className="mt-4 btn-primary py-2 px-6"
+              >
+                Create Your First Team
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Create Modal */}
       {showModal && (

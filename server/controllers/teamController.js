@@ -317,8 +317,12 @@ exports.uploadPlayers = async (req, res) => {
       // Robust mapping for bowling style
       let boStyle = 'NA';
       const boLower = (bowlingStyle || '').toLowerCase();
-      if (boLower.includes('fast') || boLower.includes('pace')) boStyle = 'faster';
-      else if (boLower.includes('spin')) boStyle = 'spiner';
+      if (boLower.includes('left') && boLower.includes('spin')) boStyle = 'left arm spinner';
+      else if (boLower.includes('right') && boLower.includes('spin')) boStyle = 'right arm spinner';
+      else if (boLower.includes('left') && (boLower.includes('pace') || boLower.includes('fast'))) boStyle = 'left arm pacer';
+      else if (boLower.includes('right') && (boLower.includes('pace') || boLower.includes('fast'))) boStyle = 'right arm pacer';
+      else if (boLower.includes('spin')) boStyle = 'right arm spinner'; // Default spinner to right arm
+      else if (boLower.includes('fast') || boLower.includes('pace')) boStyle = 'right arm pacer'; // Default pacer to right arm
 
       // Robust mapping for role
       let r = role.toLowerCase().trim();

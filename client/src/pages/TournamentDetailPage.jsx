@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { HiOutlineCalendar, HiOutlineUserGroup, HiOutlinePlus, HiOutlineX, HiOutlineSearch, HiOutlineClipboardCopy, HiOutlineCheck } from 'react-icons/hi';
+import { HiOutlineCalendar, HiOutlineUserGroup, HiOutlinePlus, HiOutlineX, HiOutlineSearch, HiOutlineClipboardCopy, HiOutlineCheck, HiOutlineTrash } from 'react-icons/hi';
 
 const TournamentDetailPage = () => {
   const { id } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [tournament, setTournament] = useState(null);
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +22,8 @@ const TournamentDetailPage = () => {
   const [newTeamName, setNewTeamName] = useState('');
   const [clonedTeamIds, setClonedTeamIds] = useState(new Set());
   const [toast, setToast] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteSaving, setDeleteSaving] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -118,6 +121,36 @@ const TournamentDetailPage = () => {
     return tournament?.teams?.some((t) => t.teamName === teamName);
   };
 
+  const getEffectiveStatus = () => {
+    if (!tournament) return 'upcoming';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(tournament.startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(tournament.endDate);
+    end.setHours(0, 0, 0, 0);
+
+    if (today < start) return 'upcoming';
+    if (today > end) return 'completed';
+    return 'live';
+  };
+
+  const isOrganizer = user && (user._id === tournament?.organizerId?._id || user.id === tournament?.organizerId?._id);
+
+  const handleDeleteTournament = async () => {
+    setDeleteSaving(true);
+    try {
+      await api.delete(`/tournaments/${id}`);
+      showToast('Tournament deleted successfully!', 'success');
+      setTimeout(() => navigate('/tournaments'), 1500);
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to delete tournament', 'error');
+    } finally {
+      setDeleteSaving(false);
+      setShowDeleteModal(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -128,13 +161,15 @@ const TournamentDetailPage = () => {
 
   if (!tournament) return <div className="card text-center py-12"><p className="text-txt-muted">Tournament not found</p></div>;
 
+  const effectiveStatus = getEffectiveStatus();
+  const isTournamentFinished = effectiveStatus === 'completed';
+
   const statusColor = {
     upcoming: 'bg-secondary/10 text-secondary',
     ongoing: 'bg-accent/10 text-accent',
+    live: 'bg-accent/10 text-accent',
     completed: 'bg-txt-muted/10 text-txt-secondary',
   };
-
-  const isOrganizer = user && (user._id === tournament.organizerId?._id || user.id === tournament.organizerId?._id);
 
   return (
     <div className="space-y-6">
@@ -185,12 +220,32 @@ const TournamentDetailPage = () => {
           <h2 className="text-lg font-bold text-txt-primary">Teams</h2>
           <div className="flex items-center gap-2">
             {isOrganizer && (
-              <button onClick={handleOpenAddTeam} className="btn-primary inline-flex items-center space-x-2 text-sm">
+              <button 
+                onClick={handleOpenAddTeam} 
+                disabled={isTournamentFinished}
+                className={`inline-flex items-center space-x-2 text-sm ${
+                  isTournamentFinished 
+                    ? 'btn-primary opacity-50 cursor-not-allowed' 
+                    : 'btn-primary'
+                }`}
+                title={isTournamentFinished ? 'Cannot add teams to finished tournaments' : ''}
+              >
                 <HiOutlinePlus /> <span>Add Team</span>
               </button>
             )}
             {isOrganizer && (
-              <Link to={`/teams?tournamentId=${id}`} className="btn-outline text-sm">Manage Teams</Link>
+              <Link 
+                to={`/teams?tournamentId=${id}`} 
+                className={`text-sm ${
+                  isTournamentFinished 
+                    ? 'btn-outline opacity-50 pointer-events-none' 
+                    : 'btn-outline'
+                }`}
+                onClick={isTournamentFinished ? (e) => e.preventDefault() : undefined}
+                title={isTournamentFinished ? 'Cannot manage teams in finished tournaments' : ''}
+              >
+                Manage Teams
+              </Link>
             )}
           </div>
         </div>
@@ -216,7 +271,7 @@ const TournamentDetailPage = () => {
               <HiOutlineUserGroup className="text-3xl text-primary/40" />
             </div>
             <p className="text-txt-muted mb-3">No teams registered yet.</p>
-            {isOrganizer && (
+            {isOrganizer && !isTournamentFinished && (
               <button onClick={handleOpenAddTeam} className="btn-primary inline-flex items-center space-x-2 text-sm mx-auto">
                 <HiOutlinePlus /> <span>Add Your First Team</span>
               </button>
@@ -427,6 +482,63 @@ const TournamentDetailPage = () => {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Tournament Section - Only for Organizer */}
+      {isOrganizer && (
+        <div className="card border border-danger/20 bg-danger/5 p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="font-semibold text-danger mb-1">Danger Zone</h3>
+              <p className="text-sm text-txt-secondary">Delete this tournament and all associated data</p>
+            </div>
+            <button 
+              onClick={() => setShowDeleteModal(true)}
+              className="btn-danger inline-flex items-center space-x-2 text-sm"
+            >
+              <HiOutlineTrash /> <span>Delete Tournament</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-scale-up">
+            <div className="w-16 h-16 rounded-full bg-danger/10 flex items-center justify-center mx-auto mb-4">
+              <HiOutlineTrash className="text-3xl text-danger" />
+            </div>
+            <h2 className="text-xl font-bold text-center text-txt-primary mb-2">Delete Tournament?</h2>
+            <p className="text-center text-txt-secondary mb-6">
+              Are you sure you want to delete <span className="font-bold text-txt-primary">{tournament?.name}</span>?<br />
+              <span className="text-danger font-medium mt-1 inline-block">This action will permanently delete all teams, matches, and score records. This cannot be undone.</span>
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleteSaving}
+                className="btn-outline flex-1 py-2.5"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteTournament}
+                disabled={deleteSaving}
+                className="btn-danger flex-1 py-2.5 shadow-lg shadow-danger/30"
+              >
+                {deleteSaving ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Deleting...
+                  </span>
+                ) : (
+                  'Delete Tournament'
+                )}
+              </button>
             </div>
           </div>
         </div>

@@ -65,15 +65,15 @@ const TeamDetailPage = () => {
     const examplePlayers = [
       'Virat Kohli,batsman,Right handed,NA',
       'Rohit Sharma,batsman,Right handed,NA',
-      'Jasprit Bumrah,bowler,Right handed,faster',
+      'Jasprit Bumrah,bowler,Right handed,right arm pacer',
       'MS Dhoni,wicketkeeper,Right handed,NA',
-      'Ravindra Jadeja,allrounder,Left handed,spiner',
+      'Ravindra Jadeja,allrounder,Left handed,left arm spinner',
       'KL Rahul,wicketkeeper,Right handed,NA',
-      'Hardik Pandya,allrounder,Right handed,faster',
-      'Mohammed Shami,bowler,Right handed,faster',
+      'Hardik Pandya,allrounder,Right handed,right arm pacer',
+      'Mohammed Shami,bowler,Right handed,right arm pacer',
       'Rishabh Pant,wicketkeeper,Left handed,NA',
       'Suryakumar Yadav,batsman,Right handed,NA',
-      'Yuzvendra Chahal,bowler,Right handed,spiner'
+      'Yuzvendra Chahal,bowler,Right handed,right arm spinner'
     ];
     const blob = new Blob([headers + examplePlayers.join('\n')], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -189,41 +189,69 @@ const TeamDetailPage = () => {
             <h3 className="text-md font-bold text-primary mb-4 flex items-center gap-2">
               <HiOutlineUserAdd /> Add New Player
             </h3>
-            <form onSubmit={handleAddManualPlayer} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className="label">Player Name</label>
-                <input 
-                  value={playerForm.name} 
-                  onChange={e => setPlayerForm({...playerForm, name: e.target.value})}
-                  className="input" placeholder="e.g. Virat Kohli" required 
-                />
+            <form onSubmit={handleAddManualPlayer} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="label">Player Name</label>
+                  <input 
+                    value={playerForm.name} 
+                    onChange={e => setPlayerForm({...playerForm, name: e.target.value})}
+                    className="input" placeholder="e.g. Virat Kohli" required 
+                  />
+                </div>
+                <div>
+                  <label className="label">Role</label>
+                  <select 
+                    value={playerForm.role}
+                    onChange={e => setPlayerForm({...playerForm, role: e.target.value})}
+                    className="input"
+                  >
+                    <option value="batsman">Batsman</option>
+                    <option value="bowler">Bowler</option>
+                    <option value="allrounder">All-Rounder</option>
+                    <option value="wicketkeeper">Wicket-Keeper</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="label">Role</label>
-                <select 
-                  value={playerForm.role}
-                  onChange={e => setPlayerForm({...playerForm, role: e.target.value})}
-                  className="input"
-                >
-                  <option value="batsman">Batsman</option>
-                  <option value="bowler">Bowler</option>
-                  <option value="allrounder">All-Rounder</option>
-                  <option value="wicketkeeper">Wicket-Keeper</option>
-                </select>
-              </div>
-              <div>
-                <label className="label">Batting Style</label>
-                <select 
-                  value={playerForm.battingStyle}
-                  onChange={e => setPlayerForm({...playerForm, battingStyle: e.target.value})}
-                  className="input"
-                >
-                  <option value="Right handed">Right handed</option>
-                  <option value="Left handed">Left handed</option>
-                </select>
-              </div>
-              <div className="flex items-end">
-                <button type="submit" disabled={saving || !playerForm.name} className="btn-primary w-full py-2.5">
+
+              {/* Batting Style - Show for Batsman, Wicket-keeper, and All-rounder */}
+              {['batsman', 'wicketkeeper', 'allrounder'].includes(playerForm.role) && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="label">Batting Style</label>
+                    <select 
+                      value={playerForm.battingStyle}
+                      onChange={e => setPlayerForm({...playerForm, battingStyle: e.target.value})}
+                      className="input"
+                    >
+                      <option value="Right handed">Right handed</option>
+                      <option value="Left handed">Left handed</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Bowling Style - Show for Bowler and All-rounder */}
+              {['bowler', 'allrounder'].includes(playerForm.role) && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="label">Bowling Style</label>
+                    <select 
+                      value={playerForm.bowlingStyle}
+                      onChange={e => setPlayerForm({...playerForm, bowlingStyle: e.target.value})}
+                      className="input"
+                    >
+                      <option value="left arm spinner">Left arm spinner</option>
+                      <option value="right arm spinner">Right arm spinner</option>
+                      <option value="left arm pacer">Left arm pacer</option>
+                      <option value="right arm pacer">Right arm pacer</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <button type="submit" disabled={saving || !playerForm.name} className="btn-primary py-2.5 px-6">
                   {saving ? 'Adding...' : 'Add to Squad'}
                 </button>
               </div>
@@ -247,8 +275,12 @@ const TeamDetailPage = () => {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px] text-txt-muted whitespace-nowrap hidden group-hover:block transition-all">{player.battingStyle}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-txt-muted whitespace-nowrap hidden group-hover:block transition-all">
+                    {['batsman', 'wicketkeeper', 'allrounder'].includes(player.role) && player.battingStyle}
+                    {player.role === 'allrounder' && player.battingStyle && player.bowlingStyle && ' • '}
+                    {['bowler', 'allrounder'].includes(player.role) && player.bowlingStyle !== 'NA' && player.bowlingStyle}
+                  </span>
                   {user && (
                     <button onClick={() => handleRemovePlayer(player._id)} 
                       className="p-2 text-txt-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-all"

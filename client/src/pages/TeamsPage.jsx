@@ -66,8 +66,12 @@ const TeamsPage = () => {
 
   const canDelete = (team) => {
     if (!user) return false;
+    const userId = user.id || user._id;
     const tournament = tournaments.find(t => t._id === (team.tournamentId?._id || team.tournamentId));
-    return user._id === tournament?.organizerId?._id || user._id === tournament?.organizerId || user._id === team.createdBy;
+    const organizerId = tournament?.organizerId?._id || tournament?.organizerId;
+    const creatorId = team.createdBy?._id || team.createdBy;
+    return (userId && organizerId && userId.toString() === organizerId.toString()) || 
+           (userId && creatorId && userId.toString() === creatorId.toString());
   };
 
   if (loading) {
@@ -115,9 +119,16 @@ const TeamsPage = () => {
 
       {/* Teams Grid */}
       {(() => {
+        const userId = user?.id || user?._id;
         const filteredTeams = filter === 'myTeams' 
-          ? teams.filter(t => t.createdBy === user?._id || t.createdBy === user?.id)
-          : teams.filter(t => t.createdBy !== user?._id && t.createdBy !== user?.id);
+          ? teams.filter(t => {
+              const creatorId = t.createdBy?._id || t.createdBy;
+              return userId && creatorId && userId.toString() === creatorId.toString();
+            })
+          : teams.filter(t => {
+              const creatorId = t.createdBy?._id || t.createdBy;
+              return !userId || !creatorId || userId.toString() !== creatorId.toString();
+            });
 
         return filteredTeams.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in">

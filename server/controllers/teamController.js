@@ -38,7 +38,15 @@ exports.getTeam = async (req, res) => {
     const team = await Team.findById(req.params.id)
       .populate('players')
       .populate('captainId', 'name email')
-      .populate('tournamentId', 'name');
+      .populate('createdBy', 'name email')
+      .populate({
+        path: 'tournamentId',
+        select: 'name organizerId',
+        populate: {
+          path: 'organizerId',
+          select: 'name email'
+        }
+      });
     if (!team) {
       return res.status(404).json({ success: false, message: 'Team not found' });
     }
@@ -59,7 +67,15 @@ exports.getTeams = async (req, res) => {
     const teams = await Team.find(filter)
       .populate('players')
       .populate('captainId', 'name email')
-      .populate('tournamentId', 'name');
+      .populate('createdBy', 'name email')
+      .populate({
+        path: 'tournamentId',
+        select: 'name organizerId',
+        populate: {
+          path: 'organizerId',
+          select: 'name email'
+        }
+      });
     res.json({ success: true, data: teams });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -85,7 +101,15 @@ exports.getMyTeams = async (req, res) => {
       .sort({ createdAt: -1 })
       .populate('players')
       .populate('captainId', 'name email')
-      .populate('tournamentId', 'name');
+      .populate('createdBy', 'name email')
+      .populate({
+        path: 'tournamentId',
+        select: 'name organizerId',
+        populate: {
+          path: 'organizerId',
+          select: 'name email'
+        }
+      });
 
     // Deduplicate by teamName (case insensitive)
     const seenNames = new Set();
@@ -176,9 +200,25 @@ exports.cloneTeam = async (req, res) => {
 // @route   POST /api/teams/:id/players
 exports.addPlayer = async (req, res) => {
   try {
-    const team = await Team.findById(req.params.id);
+    const team = await Team.findById(req.params.id)
+      .populate('createdBy')
+      .populate({
+        path: 'tournamentId',
+        populate: {
+          path: 'organizerId'
+        }
+      });
+    
     if (!team) {
       return res.status(404).json({ success: false, message: 'Team not found' });
+    }
+
+    // Check if user is the team creator or tournament organizer
+    const isTeamCreator = team.createdBy && (team.createdBy._id.toString() === req.user.id || team.createdBy._id.toString() === req.user._id);
+    const isTournamentOrganizer = team.tournamentId.organizerId && (team.tournamentId.organizerId._id.toString() === req.user.id || team.tournamentId.organizerId._id.toString() === req.user._id);
+
+    if (!isTeamCreator && !isTournamentOrganizer) {
+      return res.status(403).json({ success: false, message: 'You do not have permission to add players to this team' });
     }
 
     if (team.players.length >= 11) {
@@ -208,9 +248,25 @@ exports.addPlayer = async (req, res) => {
 // @route   DELETE /api/teams/:id/players/:playerId
 exports.removePlayer = async (req, res) => {
   try {
-    const team = await Team.findById(req.params.id);
+    const team = await Team.findById(req.params.id)
+      .populate('createdBy')
+      .populate({
+        path: 'tournamentId',
+        populate: {
+          path: 'organizerId'
+        }
+      });
+    
     if (!team) {
       return res.status(404).json({ success: false, message: 'Team not found' });
+    }
+
+    // Check if user is the team creator or tournament organizer
+    const isTeamCreator = team.createdBy && (team.createdBy._id.toString() === req.user.id || team.createdBy._id.toString() === req.user._id);
+    const isTournamentOrganizer = team.tournamentId.organizerId && (team.tournamentId.organizerId._id.toString() === req.user.id || team.tournamentId.organizerId._id.toString() === req.user._id);
+
+    if (!isTeamCreator && !isTournamentOrganizer) {
+      return res.status(403).json({ success: false, message: 'You do not have permission to remove players from this team' });
     }
 
     team.players = team.players.filter(p => p.toString() !== req.params.playerId);
@@ -286,9 +342,25 @@ exports.deleteTeam = async (req, res) => {
 // @route   POST /api/teams/:id/players/upload
 exports.uploadPlayers = async (req, res) => {
   try {
-    const team = await Team.findById(req.params.id);
+    const team = await Team.findById(req.params.id)
+      .populate('createdBy')
+      .populate({
+        path: 'tournamentId',
+        populate: {
+          path: 'organizerId'
+        }
+      });
+    
     if (!team) {
       return res.status(404).json({ success: false, message: 'Team not found' });
+    }
+
+    // Check if user is the team creator or tournament organizer
+    const isTeamCreator = team.createdBy && (team.createdBy._id.toString() === req.user.id || team.createdBy._id.toString() === req.user._id);
+    const isTournamentOrganizer = team.tournamentId.organizerId && (team.tournamentId.organizerId._id.toString() === req.user.id || team.tournamentId.organizerId._id.toString() === req.user._id);
+
+    if (!isTeamCreator && !isTournamentOrganizer) {
+      return res.status(403).json({ success: false, message: 'You do not have permission to upload players to this team' });
     }
 
     const { players } = req.body;

@@ -52,9 +52,10 @@ const DashboardPage = () => {
 
   const fetchData = async () => {
     try {
-      const [matchesRes, tournamentsRes] = await Promise.all([
+      const [matchesRes, tournamentsRes, teamsRes] = await Promise.all([
         api.get('/matches'),
-        api.get('/tournaments')
+        api.get('/tournaments'),
+        api.get('/teams')
       ]);
 
       const allMatches = matchesRes.data.data;
@@ -65,7 +66,7 @@ const DashboardPage = () => {
 
       setStats({
         tournaments: tournamentsRes.data.data.length,
-        teams: new Set(allMatches.flatMap(m => [m.team1Id?._id, m.team2Id?._id])).size,
+        teams: teamsRes.data.data.length,
         matches: allMatches.length,
       });
 
@@ -99,7 +100,6 @@ const DashboardPage = () => {
           <h1 className="text-2xl font-bold text-txt-primary">
             Welcome back, <span className="text-primary">{user?.name}</span> 👋
           </h1>
-          <p className="text-txt-secondary mt-1">Here's what's happening today</p>
         </div>
         {user && (
           <Link to="/matches/create" className="btn-primary inline-flex items-center space-x-2">
@@ -114,7 +114,7 @@ const DashboardPage = () => {
         <div className="card bg-gradient-to-br from-primary to-primary-light text-white transition-transform hover:-translate-y-1">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-white/70 text-sm">Tournaments</p>
+              <p className="text-white/70 text-sm">All Tournaments</p>
               <p className="text-3xl font-bold mt-1">{stats.tournaments}</p>
             </div>
             <HiOutlineCollection className="text-4xl text-white/30" />
@@ -123,7 +123,7 @@ const DashboardPage = () => {
         <div className="card bg-gradient-to-br from-secondary to-secondary-dark text-white transition-transform hover:-translate-y-1">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-white/70 text-sm">Teams</p>
+              <p className="text-white/70 text-sm">All Teams</p>
               <p className="text-3xl font-bold mt-1">{stats.teams}</p>
             </div>
             <HiOutlineUserGroup className="text-4xl text-white/30" />

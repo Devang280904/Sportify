@@ -140,6 +140,11 @@ const TeamDetailPage = () => {
 
   if (!team) return <div className="card text-center py-12"><p className="text-txt-muted">Team not found</p></div>;
 
+  // Check if user owns this team
+  const isTeamOwner = user && (user._id === team.createdBy?._id || user._id === team.createdBy || user.id === team.createdBy?._id || user.id === team.createdBy);
+  const isTournamentOrganizer = user && (user._id === team.tournamentId?.organizerId?._id || user.id === team.tournamentId?.organizerId?._id || user._id === team.tournamentId?.organizerId || user.id === team.tournamentId?.organizerId);
+  const canEdit = isTeamOwner || isTournamentOrganizer;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -160,9 +165,9 @@ const TeamDetailPage = () => {
       {/* Players List Section */}
       <div className="animate-fade-in">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-          <h2 className="text-lg font-bold text-txt-primary">Squad Management</h2>
+          <h2 className="text-lg font-bold text-txt-primary">Squad Management {!canEdit && <span className="text-xs text-txt-muted font-normal ml-2">(View Only)</span>}</h2>
           <div className="flex items-center gap-2">
-            {user && team.players.length < 11 && (
+            {canEdit && user && team.players.length < 11 && (
               <button 
                 onClick={() => setShowManualForm(!showManualForm)}
                 className={`btn-primary flex items-center space-x-2 text-sm transition-all ${showManualForm ? 'bg-danger hover:bg-danger-dark focus:ring-danger' : ''}`}
@@ -174,7 +179,7 @@ const TeamDetailPage = () => {
             <button onClick={handleDownloadTemplate} className="btn-outline inline-flex items-center space-x-2 text-sm py-2">
               <HiOutlineDownload /> <span>Download Template (11 Rows)</span>
             </button>
-            {user && team.players.length < 11 && (
+            {canEdit && user && team.players.length < 11 && (
               <label className="btn-secondary inline-flex items-center space-x-2 text-sm py-2 cursor-pointer transition-all hover:shadow-lg">
                 <HiOutlineUpload /> <span>CSV Upload</span>
                 <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
@@ -184,7 +189,7 @@ const TeamDetailPage = () => {
         </div>
 
         {/* Manual Add Form Overlay/Section */}
-        {showManualForm && (
+        {showManualForm && canEdit && (
           <div className="card border-primary/30 bg-primary/5 animate-slide-up mb-6">
             <h3 className="text-md font-bold text-primary mb-4 flex items-center gap-2">
               <HiOutlineUserAdd /> Add New Player
@@ -281,7 +286,7 @@ const TeamDetailPage = () => {
                     {player.role === 'allrounder' && player.battingStyle && player.bowlingStyle && ' • '}
                     {['bowler', 'allrounder'].includes(player.role) && player.bowlingStyle !== 'NA' && player.bowlingStyle}
                   </span>
-                  {user && (
+                  {canEdit && user && (
                     <button onClick={() => handleRemovePlayer(player._id)} 
                       className="p-2 text-txt-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-all"
                       title="Remove Player">

@@ -123,11 +123,21 @@ const TeamsPage = () => {
         const filteredTeams = filter === 'myTeams' 
           ? teams.filter(t => {
               const creatorId = t.createdBy?._id || t.createdBy;
-              return userId && creatorId && userId.toString() === creatorId.toString();
+              const organizerId = t.tournamentId?.organizerId?._id || t.tournamentId?.organizerId;
+              // Show in "My Teams" if user created it OR is the tournament organizer
+              return userId && (
+                (creatorId && userId.toString() === creatorId.toString()) ||
+                (organizerId && userId.toString() === organizerId.toString())
+              );
             })
           : teams.filter(t => {
               const creatorId = t.createdBy?._id || t.createdBy;
-              return !userId || !creatorId || userId.toString() !== creatorId.toString();
+              const organizerId = t.tournamentId?.organizerId?._id || t.tournamentId?.organizerId;
+              // Show in "Other Teams" if user didn't create it AND is not the organizer
+              return userId && !(
+                (creatorId && userId.toString() === creatorId.toString()) ||
+                (organizerId && userId.toString() === organizerId.toString())
+              );
             });
 
         return filteredTeams.length > 0 ? (

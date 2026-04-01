@@ -224,7 +224,7 @@ const TournamentsPage = () => {
                       <span>{new Date(t.startDate).toLocaleDateString()} – {new Date(t.endDate).toLocaleDateString()}</span>
                     </div>
                     <p className="text-txt-muted">{t.teams?.length || 0} teams registered</p>
-                    <p className="text-txt-muted text-xs">Organizer: {t.organizerId?.name || 'N/A'}</p>
+                    <p className="text-txt-muted text-xs">created by: {t.organizerId?.name || 'N/A'}</p>
                   </div>
                 </Link>
               </div>

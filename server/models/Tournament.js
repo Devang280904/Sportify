@@ -26,6 +26,13 @@ const tournamentSchema = new mongoose.Schema({
       message: 'End date must be after start date',
     },
   },
+  playersPerTeam: {
+    type: Number,
+    required: [true, 'Players per team is required'],
+    default: 11,
+    min: 2,
+    max: 11,
+  },
   status: {
     type: String,
     enum: ['upcoming', 'ongoing', 'completed'],

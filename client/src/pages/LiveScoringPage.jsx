@@ -109,6 +109,18 @@ const LiveScoringPage = () => {
       });
       const newScore = res.data.data;
       setScores(prev => prev.map(s => s.teamId === activeTeamId ? newScore : s));
+      
+      // Auto-end match if status returned in response
+      if (res.data.matchStatus === 'completed') {
+        setMatch(prev => ({ 
+          ...prev, 
+          status: 'completed', 
+          winnerId: res.data.winnerId, 
+          resultMessage: res.data.resultMessage 
+        }));
+        setMatchResult(res.data.resultMessage);
+        setShowCelebration(true);
+      }
 
       if (type === 'wicket') {
         setShowBatsmanModal(true);
@@ -242,66 +254,106 @@ const LiveScoringPage = () => {
         />
       )}
 
-      {/* Match Header Scoreboard */}
-      <div className="card bg-gradient-to-br from-primary-dark to-primary text-white overflow-hidden relative shadow-2xl border-none">
+      {/* Match Header Scoreboard: Professional Dark Theme */}
+      <div className="bg-[#1a1a1b] text-white rounded-t-xl overflow-hidden relative border border-[#2d2d2d] shadow-2xl">
         <div className="absolute top-0 right-0 p-4"><LiveIndicator size="md" /></div>
-        <div className="p-8">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-                <div className={`flex flex-col items-center gap-2 ${activeTeamId?.toString() === (match?.team1Id?._id || match?.team1Id).toString() ? 'opacity-100 scale-105' : 'opacity-60'}`}>
-                    {match.team1Id?.logoURL ? (
-                      <img src={match.team1Id.logoURL} alt={match.team1Id.teamName} className="w-16 h-16 object-contain bg-white rounded-xl p-1" />
-                    ) : (
-                      <div className="w-16 h-16 rounded-xl bg-white/10 flex items-center justify-center font-black text-2xl uppercase">{match.team1Id?.teamName?.charAt(0)}</div>
-                    )}
-                    <span className="font-bold text-lg uppercase tracking-widest">{match.team1Id?.teamName}</span>
-                    <div className="text-center">
-                        <h2 className="text-3xl font-black">{scores.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id).toString())?.runs || 0}/{scores.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id).toString())?.wickets || 0}</h2>
-                        <p className="text-xs text-white/70">({scores.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id).toString())?.overs || 0} ov)</p>
-                    </div>
-                </div>
+        
+        <div className="p-6 md:p-8">
+          {/* Top Meta info */}
+          <div className="flex items-center text-xs text-txt-muted mb-6 font-medium tracking-wide">
+            <span className="uppercase text-white/80">{match.tournamentId?.name || 'Local Series'}</span>
+            <span className="mx-2 opacity-40">•</span>
+            <span className="text-white/60">{new Date(match.matchDate).toDateString()}</span>
+            {match.venue && (
+              <>
+                <span className="mx-2 opacity-40">•</span>
+                <span className="text-white/60">{match.venue}</span>
+              </>
+            )}
+          </div>
 
-                <div className="flex flex-col items-center">
-                    {match.currentInnings === 2 && (
-                      <div className="mb-2 px-4 py-1.5 bg-accent/20 border border-accent/30 rounded-full animate-pulse shadow-lg shadow-accent/10">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-accent">Target: {
-                          (scores.find(s => s.teamId.toString() !== match.battingTeamId.toString())?.runs || 0) + 1
-                        }</span>
-                      </div>
-                    )}
-                    <span className="text-sm font-black italic uppercase text-white/40 tracking-widest">v/s</span>
-                    <div className="mt-2 text-[10px] uppercase font-bold tracking-widest py-1 px-3 bg-white/10 rounded-full border border-white/10">
-                        {match.totalOvers} Overs • {match.playersPerTeam} Players
-                    </div>
-                </div>
+          {/* Center Teams Horizontal Layout */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8 md:gap-12 w-full max-w-3xl mx-auto">
+            
+            {/* Team 1 Profile */}
+            <div className={`flex flex-col items-center gap-3 w-24 shrink-0 ${activeTeamId?.toString() === (match?.team1Id?._id || match?.team1Id).toString() ? 'opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'opacity-60 grayscale-[30%]'}`}>
+              {match.team1Id?.logoURL ? (
+                <img src={match.team1Id.logoURL} alt={match.team1Id.teamName} className="w-16 h-16 object-contain" />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-bold text-2xl uppercase">{match.team1Id?.teamName?.charAt(0)}</div>
+              )}
+              <span className="font-bold text-sm tracking-widest uppercase text-center">{match.team1Id?.teamName}</span>
+            </div>
 
-                <div className={`flex flex-col items-center gap-2 ${activeTeamId?.toString() === (match?.team2Id?._id || match?.team2Id).toString() ? 'opacity-100 scale-105' : 'opacity-60'}`}>
-                    {match.team2Id?.logoURL ? (
-                      <img src={match.team2Id.logoURL} alt={match.team2Id.teamName} className="w-16 h-16 object-contain bg-white rounded-xl p-1" />
-                    ) : (
-                      <div className="w-16 h-16 rounded-xl bg-white/10 flex items-center justify-center font-black text-2xl uppercase">{match.team2Id?.teamName?.charAt(0)}</div>
-                    )}
-                    <span className="font-bold text-lg uppercase tracking-widest">{match.team2Id?.teamName}</span>
-                    <div className="text-center">
-                        <h2 className="text-3xl font-black">{scores.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id).toString())?.runs || 0}/{scores.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id).toString())?.wickets || 0}</h2>
-                        <p className="text-xs text-white/70">({scores.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id).toString())?.overs || 0} ov)</p>
-                    </div>
-                </div>
+            {/* Scores Center Area */}
+            <div className="flex-1 flex justify-center items-center gap-6 md:gap-16 w-full">
+              {/* Team 1 Score */}
+              <div className="text-center">
+                  <h2 className="text-3xl lg:text-4xl font-black tabular-nums tracking-tight">
+                    {scores.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id).toString())?.runs || 0}/{scores.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id).toString())?.wickets || 0}
+                  </h2>
+                  <p className="text-sm text-white/60 font-medium mt-1">({scores.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id).toString())?.overs || 0} ov)</p>
+              </div>
+
+              {/* Separator / Target */}
+              <div className="flex flex-col items-center justify-center min-w-[80px]">
+                {match.currentInnings === 2 && (
+                  <div className="mb-2 px-3 py-1 bg-white/10 rounded-full">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-white">Target: {
+                      (scores.find(s => s.teamId.toString() !== match.battingTeamId.toString())?.runs || 0) + 1
+                    }</span>
+                  </div>
+                )}
+                <span className="font-black text-white/20 uppercase tracking-[0.2em] text-sm">V/S</span>
+              </div>
+
+              {/* Team 2 Score */}
+              <div className="text-center">
+                  <h2 className="text-3xl lg:text-4xl font-black tabular-nums tracking-tight">
+                    {scores.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id).toString())?.runs || 0}/{scores.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id).toString())?.wickets || 0}
+                  </h2>
+                  <p className="text-sm text-white/60 font-medium mt-1">({scores.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id).toString())?.overs || 0} ov)</p>
+              </div>
             </div>
-            <div className="mt-6 pt-4 border-t border-white/10 text-center">
-                <p className="text-xs font-medium text-white/60 tracking-wider">
-                    {match.venue} • {new Date(match.matchDate).toDateString()}
-                    {match.startTime && ` • Started at ${new Date(match.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
-                </p>
+
+            {/* Team 2 Profile */}
+            <div className={`flex flex-col items-center gap-3 w-24 shrink-0 ${activeTeamId?.toString() === (match?.team2Id?._id || match?.team2Id).toString() ? 'opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'opacity-60 grayscale-[30%]'}`}>
+              {match.team2Id?.logoURL ? (
+                <img src={match.team2Id.logoURL} alt={match.team2Id.teamName} className="w-16 h-16 object-contain" />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-bold text-2xl uppercase">{match.team2Id?.teamName?.charAt(0)}</div>
+              )}
+              <span className="font-bold text-sm tracking-widest uppercase text-center">{match.team2Id?.teamName}</span>
             </div>
+
+          </div>
+
+          {/* Bottom Status Message */}
+          <div className="mt-8 text-center space-y-2">
+            {match.status === 'completed' && match.resultMessage ? (
+              <p className="font-medium text-white">{match.resultMessage}</p>
+            ) : match.status === 'live' ? (
+              <p className="font-medium text-accent">Match is Live</p>
+            ) : (
+              <p className="font-medium text-white/60">Match Scheduled</p>
+            )}
+
+            {/* Extra bottom meta Info */}
+            <div className="text-[11px] text-white/40 uppercase tracking-widest font-medium pt-2">
+              T{match.totalOvers} • {match.playersPerTeam} Players • Created by: {match.createdBy?.name || match.tournamentId?.organizerId?.name || 'N/A'}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-surface-card rounded-xl p-1 shadow-md border border-surface-border">
+      <div className="flex bg-[#1a1a1b] rounded-b-xl border border-t-0 border-[#2d2d2d] shadow-sm overflow-hidden mb-6">
         {['live', 'scorecard', 'squads'].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-3 px-4 rounded-lg font-black text-xs uppercase tracking-widest transition-all ${
-              activeTab === tab ? 'bg-primary text-white shadow-lg' : 'text-txt-secondary hover:bg-primary/5'
+            className={`flex-1 py-4 px-4 text-[11px] md:text-xs font-black uppercase tracking-widest transition-all ${
+              activeTab === tab 
+                ? 'text-white border-b-[3px] border-white bg-white/5' 
+                : 'text-white/50 hover:text-white hover:bg-white/5 border-b-[3px] border-transparent'
             }`}>
             {tab}
           </button>

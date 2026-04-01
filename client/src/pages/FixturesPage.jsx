@@ -89,14 +89,17 @@ const FixturesPage = () => {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3 text-sm">
-                <span className="text-txt-muted">
-                  {new Date(match.matchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </span>
-                <span className="text-txt-muted">📍 {match.venue}</span>
-                {match.status === 'live' ? <LiveIndicator /> : (
-                  <span className={statusStyles[match.status]}>{match.status}</span>
-                )}
+              <div className="flex flex-col sm:items-end gap-1 text-sm text-txt-muted">
+                <div className="flex items-center gap-3">
+                  <span>{new Date(match.matchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                  <span>📍 {match.venue}</span>
+                  {match.status === 'live' ? <LiveIndicator /> : (
+                    <span className={statusStyles[match.status]}>{match.status}</span>
+                  )}
+                </div>
+                <div className="text-[11px] opacity-70">
+                  created by: {match.createdBy?.name || match.tournamentId?.organizerId?.name || 'N/A'}
+                </div>
               </div>
             </Link>
           ))}

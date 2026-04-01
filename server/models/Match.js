@@ -4,7 +4,13 @@ const matchSchema = new mongoose.Schema({
   tournamentId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Tournament',
-    required: true,
+  },
+  playersPerTeam: {
+    type: Number,
+    required: [true, 'Players per team is required'],
+    default: 11,
+    min: 2,
+    max: 11,
   },
   team1Id: {
     type: mongoose.Schema.Types.ObjectId,
@@ -35,7 +41,10 @@ const matchSchema = new mongoose.Schema({
     ref: 'Team',
     default: null,
   },
-
+  resultMessage: {
+    type: String,
+    default: null,
+  },
   battingTeamId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Team',
@@ -48,6 +57,19 @@ const matchSchema = new mongoose.Schema({
   currentInnings: {
     type: Number,
     default: 1,
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  startTime: {
+    type: Date,
+    default: null,
+  },
+  endTime: {
+    type: Date,
+    default: null,
   },
 }, {
   timestamps: true,

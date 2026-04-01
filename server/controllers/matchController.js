@@ -5,20 +5,42 @@ const ScoreRecord = require('../models/ScoreRecord');
 // @route   POST /api/matches
 exports.createMatch = async (req, res) => {
   try {
-    const { tournamentId, team1Id, team2Id, matchDate, venue, totalOvers } = req.body;
+    const { tournamentId, team1Id, team2Id, matchDate, venue, totalOvers, playersPerTeam } = req.body;
 
     if (team1Id === team2Id) {
       return res.status(400).json({ success: false, message: 'Team1 and Team2 cannot be the same' });
     }
 
-    // Verify tournament ownership
-    const Tournament = require('../models/Tournament');
-    const tournament = await Tournament.findById(tournamentId);
-    if (!tournament) {
-      return res.status(404).json({ success: false, message: 'Tournament not found' });
+    const Team = require('../models/Team');
+    const team1 = await Team.findById(team1Id);
+    const team2 = await Team.findById(team2Id);
+    
+    if (!team1 || !team2) {
+      return res.status(404).json({ success: false, message: 'One or both teams not found' });
     }
-    if (tournament.organizerId.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'You cannot add or modify another user’s tournament/match.' });
+
+    let requiredPlayers = playersPerTeam ? Number(playersPerTeam) : 11;
+
+    // Verify tournament ownership if it's tied to a tournament
+    if (tournamentId) {
+      const Tournament = require('../models/Tournament');
+      const tournament = await Tournament.findById(tournamentId);
+      if (!tournament) {
+        return res.status(404).json({ success: false, message: 'Tournament not found' });
+      }
+      if (tournament.organizerId.toString() !== req.user.id) {
+        return res.status(403).json({ success: false, message: 'You cannot add or modify another user’s tournament/match.' });
+      }
+      requiredPlayers = tournament.playersPerTeam || 11;
+    }
+
+    // Validate player counts
+    if (team1.players.length !== requiredPlayers) {
+      return res.status(400).json({ success: false, message: `Team 1 (${team1.teamName}) has ${team1.players.length} players, but exactly ${requiredPlayers} are required` });
+    }
+
+    if (team2.players.length !== requiredPlayers) {
+      return res.status(400).json({ success: false, message: `Team 2 (${team2.teamName}) has ${team2.players.length} players, but exactly ${requiredPlayers} are required` });
     }
 
     // Backend Date Validation
@@ -32,9 +54,25 @@ exports.createMatch = async (req, res) => {
       });
     }
 
-    const match = await Match.create({
-      tournamentId, team1Id, team2Id, matchDate, venue, totalOvers: totalOvers || 20,
-    });
+    const matchData = { 
+      team1Id, 
+      team2Id, 
+      matchDate, 
+      venue, 
+      totalOvers: totalOvers || 20, 
+      playersPerTeam: requiredPlayers,
+      createdBy: req.user.id
+    };
+    if (tournamentId) matchData.tournamentId = tournamentId;
+
+    // Check ownership for independent matches as well
+    if (!tournamentId) {
+      if (team1.createdBy.toString() !== req.user.id && team2.createdBy.toString() !== req.user.id) {
+         return res.status(403).json({ success: false, message: 'You must own at least one of the teams to schedule an independent match.' });
+      }
+    }
+    
+    const match = await Match.create(matchData);
 
     // Create score records for both teams
     await ScoreRecord.create({ matchId: match._id, teamId: team1Id });
@@ -57,8 +95,13 @@ exports.getMatches = async (req, res) => {
     const matches = await Match.find(filter)
       .populate('team1Id', 'teamName logoURL')
       .populate('team2Id', 'teamName logoURL')
-      .populate('tournamentId', 'name')
+      .populate({ 
+        path: 'tournamentId', 
+        select: 'name organizerId',
+        populate: { path: 'organizerId', select: 'name' }
+      })
       .populate('winnerId', 'teamName')
+      .populate('createdBy', 'name')
       .sort({ matchDate: -1 });
 
     res.json({ success: true, data: matches });
@@ -74,8 +117,13 @@ exports.getMatch = async (req, res) => {
     const match = await Match.findById(req.params.id)
       .populate('team1Id', 'teamName logoURL players')
       .populate('team2Id', 'teamName logoURL players')
-      .populate('tournamentId', 'name organizerId')
-      .populate('winnerId', 'teamName');
+      .populate({ 
+        path: 'tournamentId', 
+        select: 'name organizerId',
+        populate: { path: 'organizerId', select: 'name' }
+      })
+      .populate('winnerId', 'teamName')
+      .populate('createdBy', 'name');
 
     if (!match) {
       return res.status(404).json({ success: false, message: 'Match not found' });
@@ -114,10 +162,21 @@ exports.startMatch = async (req, res) => {
       return res.status(400).json({ success: false, message: 'battingTeamId must be one of the two match teams' });
     }
 
+    // Strict Schedule Enforcement: Match cannot start before its exact time
+    const currentTime = Date.now();
+    const scheduledTime = new Date(match.matchDate).getTime();
+    if (currentTime < scheduledTime) {
+      const waitMinutes = Math.ceil((scheduledTime - currentTime) / (60 * 1000));
+      return res.status(400).json({ 
+        success: false, 
+        message: `Match is scheduled for ${new Date(match.matchDate).toLocaleString()}. Please wait ${waitMinutes} more minute(s) before starting.` 
+      });
+    }
+
     // Use findByIdAndUpdate to bypass Mongoose enum validation on legacy docs
     const updatedMatch = await Match.findByIdAndUpdate(
       req.params.id,
-      { $set: { status: 'live', battingTeamId } },
+      { $set: { status: 'live', battingTeamId, startTime: new Date() } },
       { new: true, runValidators: false }
     ).populate('team1Id', 'teamName').populate('team2Id', 'teamName');
 

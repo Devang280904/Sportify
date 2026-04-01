@@ -43,7 +43,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/matches', matchRoutes);
-app.use('/api/scores', scoreRoutes);
+app.use('/api/matches', scoreRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

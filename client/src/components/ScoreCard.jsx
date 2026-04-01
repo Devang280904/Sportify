@@ -48,20 +48,20 @@ const ScoreCard = ({ match, scores, onDelete }) => {
   return (
     <Link
       to={getMatchLink()}
-      className={`card border-l-4 ${statusColors[match.status] || 'border-surface-border'} 
-                  hover:shadow-card-lg transition-all duration-300 block animate-slide-up relative group`}
+      className={`bg-[#1a1a1b] rounded-xl border border-[#2d2d2d] hover:border-white/20 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 block relative group overflow-hidden`}
     >
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-txt-muted font-medium">
-          {match.tournamentId?.name || 'Tournament'}
+      {/* Top Bar */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#2d2d2d] bg-white/[0.02]">
+        <span className="text-[10px] text-white/50 uppercase font-black tracking-widest truncate max-w-[150px]">
+          {match.tournamentId?.name || 'Local Series'}
         </span>
         <div className="flex items-center gap-2">
           {match.status === 'live' && <LiveIndicator />}
           {match.status === 'scheduled' && (
-            <span className="badge-scheduled">Upcoming</span>
+            <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest bg-white/10 text-white/70">Scheduled</span>
           )}
           {match.status === 'completed' && (
-            <span className="badge-completed">Completed</span>
+            <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest bg-white/5 text-white/40">Completed</span>
           )}
 
           {/* Delete Button - Only for Scheduled Matches */}
@@ -69,61 +69,69 @@ const ScoreCard = ({ match, scores, onDelete }) => {
             <button
               onClick={handleDelete}
               disabled={deleting}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-danger hover:bg-danger/10 p-1.5 rounded-lg ml-2"
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-danger hover:bg-danger/10 p-1.5 rounded-lg ml-1 z-10 relative"
               title="Delete match"
             >
-              <HiOutlineTrash className="text-lg" />
+              <HiOutlineTrash className="text-sm" />
             </button>
           )}
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="p-4 md:p-5 space-y-4">
         {/* Team 1 */}
-        <div className={`flex items-center justify-between ${match.winnerId === match.team1Id?._id ? 'font-bold' : ''}`}>
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
-              {match.team1Id?.teamName?.charAt(0) || 'T'}
-            </div>
-            <span className="text-txt-primary text-sm">{match.team1Id?.teamName || 'Team 1'}</span>
+        <div className={`flex items-center justify-between ${match.winnerId === match.team1Id?._id ? 'opacity-100' : (match.status === 'completed' ? 'opacity-60' : 'opacity-100')}`}>
+          <div className="flex items-center gap-3">
+            {match.team1Id?.logoURL ? (
+              <img src={match.team1Id.logoURL} alt={match.team1Id.teamName} className="w-8 h-8 rounded-full object-contain bg-white/5 p-0.5" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/80 text-xs font-black uppercase">
+                {match.team1Id?.teamName?.charAt(0) || 'T'}
+              </div>
+            )}
+            <span className="text-white text-sm font-bold uppercase tracking-wider">{match.team1Id?.teamName || 'Team 1'}</span>
           </div>
           {team1Score && (
-            <span className="text-txt-primary font-semibold">
-              {team1Score.runs}/{team1Score.wickets}
-              <span className="text-txt-muted text-xs ml-1">({team1Score.overs} ov)</span>
+            <span className="text-white font-black text-lg font-mono">
+              {team1Score.runs}<span className="text-white/50 text-base">/{team1Score.wickets}</span>
+              <span className="text-white/40 text-[10px] font-sans font-bold ml-2 uppercase">({team1Score.overs} ov)</span>
             </span>
           )}
         </div>
 
-        <div className="text-center text-txt-muted text-xs">vs</div>
-
         {/* Team 2 */}
-        <div className={`flex items-center justify-between ${match.winnerId === match.team2Id?._id ? 'font-bold' : ''}`}>
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center text-secondary text-xs font-bold">
-              {match.team2Id?.teamName?.charAt(0) || 'T'}
-            </div>
-            <span className="text-txt-primary text-sm">{match.team2Id?.teamName || 'Team 2'}</span>
+        <div className={`flex items-center justify-between ${match.winnerId === match.team2Id?._id ? 'opacity-100' : (match.status === 'completed' ? 'opacity-60' : 'opacity-100')}`}>
+          <div className="flex items-center gap-3">
+            {match.team2Id?.logoURL ? (
+              <img src={match.team2Id.logoURL} alt={match.team2Id.teamName} className="w-8 h-8 rounded-full object-contain bg-white/5 p-0.5" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/80 text-xs font-black uppercase">
+                {match.team2Id?.teamName?.charAt(0) || 'T'}
+              </div>
+            )}
+            <span className="text-white text-sm font-bold uppercase tracking-wider">{match.team2Id?.teamName || 'Team 2'}</span>
           </div>
           {team2Score && (
-            <span className="text-txt-primary font-semibold">
-              {team2Score.runs}/{team2Score.wickets}
-              <span className="text-txt-muted text-xs ml-1">({team2Score.overs} ov)</span>
+            <span className="text-white font-black text-lg font-mono">
+              {team2Score.runs}<span className="text-white/50 text-base">/{team2Score.wickets}</span>
+              <span className="text-white/40 text-[10px] font-sans font-bold ml-2 uppercase">({team2Score.overs} ov)</span>
             </span>
           )}
         </div>
       </div>
 
-      {match.venue && (
-        <div className="mt-3 pt-3 border-t border-surface-border">
-          <p className="text-xs text-txt-muted">📍 {match.venue}</p>
-          <p className="text-xs text-txt-muted flex items-center gap-1">
-            <span>📅 {new Date(match.matchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-            <span className="opacity-40">•</span>
-            <span>{new Date(match.matchDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-          </p>
-        </div>
-      )}
+      {/* Footer / Results Info */}
+      <div className="px-4 py-3 border-t border-[#2d2d2d] bg-[#1a1a1b] mt-1 text-center flex flex-col items-center justify-center min-h-[48px]">
+         {match.status === 'completed' ? (
+           <p className="text-accent text-[10px] font-black uppercase tracking-widest">{match.resultMessage || (match.winnerId ? 'Match Completed' : 'Match Ended')}</p>
+         ) : match.status === 'live' ? (
+           <p className="text-accent text-[10px] font-black uppercase tracking-widest animate-pulse">Match is in progress</p>
+         ) : (
+           <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">
+             {new Date(match.matchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • {new Date(match.matchDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+           </p>
+         )}
+      </div>
     </Link>
   );
 };

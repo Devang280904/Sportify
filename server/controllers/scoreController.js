@@ -42,23 +42,33 @@ exports.setBatsmen = async (req, res) => {
     const { strikerId, nonStrikerId, teamId } = req.body;
     const matchId = req.params.id;
 
+    if (!teamId) {
+      return res.status(400).json({ success: false, message: 'teamId is required to set batsmen' });
+    }
+
     const scoreRecord = await ScoreRecord.findOne({ matchId, teamId });
     if (!scoreRecord) {
-      return res.status(404).json({ success: false, message: 'Score record not found' });
+      return res.status(404).json({ success: false, message: `Score record not found for team ${teamId} in match ${matchId}` });
     }
 
     if (strikerId) {
+      // Check if already out
+      const stat = scoreRecord.batting.find(b => b.playerId.toString() === strikerId.toString());
+      if (stat && stat.isOut) return res.status(400).json({ success: false, message: 'This player is already out and cannot bat again!' });
+      
       scoreRecord.strikerId = strikerId;
-      // Add to batting array if not already there
       const player = await Player.findById(strikerId);
-      if (player && !scoreRecord.batting.find(b => b.playerId.toString() === strikerId.toString())) {
+      if (player && !stat) {
         scoreRecord.batting.push({ playerId: strikerId, playerName: player.name });
       }
     }
     if (nonStrikerId) {
+      const stat = scoreRecord.batting.find(b => b.playerId.toString() === nonStrikerId.toString());
+      if (stat && stat.isOut) return res.status(400).json({ success: false, message: 'This player is already out and cannot bat again!' });
+      
       scoreRecord.nonStrikerId = nonStrikerId;
       const player = await Player.findById(nonStrikerId);
-      if (player && !scoreRecord.batting.find(b => b.playerId.toString() === nonStrikerId.toString())) {
+      if (player && !stat) {
         scoreRecord.batting.push({ playerId: nonStrikerId, playerName: player.name });
       }
     }
@@ -81,12 +91,27 @@ exports.setBowler = async (req, res) => {
     const { bowlerId, teamId } = req.body; // teamId is the batting team's record to update
     const matchId = req.params.id;
 
+    if (!teamId) {
+       return res.status(400).json({ success: false, message: 'teamId is required to set bowler' });
+    }
+
     const scoreRecord = await ScoreRecord.findOne({ matchId, teamId });
     if (!scoreRecord) {
-      return res.status(404).json({ success: false, message: 'Score record not found' });
+      return res.status(404).json({ success: false, message: `Score record not found for team ${teamId} in match ${matchId}` });
+    }
+
+    const match = await Match.findById(matchId);
+    if (!match) {
+      return res.status(404).json({ success: false, message: 'Match not found' });
     }
 
     if (bowlerId) {
+      const maxOversPerBowler = Math.ceil((match.totalOvers || 20) / 5);
+      const bowlerStat = scoreRecord.bowling.find(b => b.playerId.toString() === bowlerId.toString());
+      if (bowlerStat && bowlerStat.ballsBowled >= maxOversPerBowler * 6) {
+         return res.status(400).json({ success: false, message: `Bowler limit reached: A bowler can only bowl up to ${maxOversPerBowler} overs in a ${match.totalOvers}-over match.` });
+      }
+
       scoreRecord.currentBowlerId = bowlerId;
       const player = await Player.findById(bowlerId);
       if (player && !scoreRecord.bowling.find(b => b.playerId.toString() === bowlerId.toString())) {
@@ -116,14 +141,21 @@ exports.updateScore = async (req, res) => {
       return res.status(400).json({ success: false, message: 'teamId is required' });
     }
 
-    const match = await Match.findById(matchId);
+    const match = await Match.findById(matchId).populate('team1Id').populate('team2Id');
     if (!match) {
       return res.status(404).json({ success: false, message: 'Match not found' });
     }
 
+    if (match.status === 'completed') {
+      return res.status(400).json({ success: false, message: 'This match has already ended!' });
+    }
+
+    if (teamId !== match.battingTeamId.toString()) {
+      return res.status(400).json({ success: false, message: 'Only the active batting team can score runs! Please swap innings if necessary.' });
+    }
+
     if (match.status === 'scheduled') {
-      match.status = 'live';
-      await match.save();
+      await Match.findByIdAndUpdate(matchId, { $set: { status: 'live' } });
       const io = req.app.get('io');
       io.to(`match:${matchId}`).emit('matchStarted', { matchId });
     }
@@ -144,7 +176,10 @@ exports.updateScore = async (req, res) => {
 
     let maxLegalBalls = match.totalOvers * 6;
     if (match.currentInnings === 2) {
-      const otherTeamId = match.battingTeamId.toString() === match.team1Id.toString() ? match.team2Id : match.team1Id;
+      const bTeamId = match.battingTeamId.toString();
+      const t1Id = (match.team1Id?._id || match.team1Id).toString();
+      const otherTeamId = bTeamId === t1Id ? match.team2Id : match.team1Id;
+      
       const otherScoreRecord = await ScoreRecord.findOne({ matchId, teamId: otherTeamId });
       if (otherScoreRecord) {
         const otherLegalBalls = countLegalBalls(otherScoreRecord.ballByBall);
@@ -197,6 +232,11 @@ exports.updateScore = async (req, res) => {
 
     // Update bowler stats
     if (bowler) {
+      const maxBowlerOvers = Math.ceil(match.totalOvers / 5);
+      if (legalDelivery && (bowler.ballsBowled / 6) >= maxBowlerOvers) {
+        return res.status(400).json({ success: false, message: `Bowler ${bowler.playerName} has already completed their maximum limit of ${maxBowlerOvers} overs.` });
+      }
+      
       bowler.runsConceded += safeRuns;
       if (legalDelivery) {
         bowler.ballsBowled += 1;
@@ -207,7 +247,8 @@ exports.updateScore = async (req, res) => {
     }
 
     if (currentBallType === 'wicket') {
-      scoreRecord.wickets = Math.min(scoreRecord.wickets + 1, 10);
+      const maxWickets = (match.playersPerTeam || 11) - 1;
+      scoreRecord.wickets = Math.min(scoreRecord.wickets + 1, maxWickets + 1);
       scoreRecord.strikerId = null; // Wait for new batsman selection
     }
 
@@ -242,9 +283,92 @@ exports.updateScore = async (req, res) => {
     });
     io.to(`match:${matchId}`).emit('scoreUpdated', scoreUpdate);
 
-    await delCache(`points:${match.tournamentId}`);
+    // Auto-complete match logic for 2nd Innings
+    if (match.currentInnings === 2) {
+      const bTeamId = match.battingTeamId.toString();
+      const t1Id = (match.team1Id?._id || match.team1Id).toString();
+      const t2Id = (match.team2Id?._id || match.team2Id).toString();
+      const targetTeamId = bTeamId === t1Id ? t2Id : t1Id;
+      
+      const otherScoreRecord = await ScoreRecord.findOne({ matchId, teamId: targetTeamId });
+      if (otherScoreRecord) {
+        let matchEnded = false;
+        
+        // Case 1: Chasing team successfully chases the target
+        if (scoreRecord.runs > otherScoreRecord.runs) {
+           const winner = bTeamId === t1Id ? match.team1Id : match.team2Id;
+           match.status = 'completed';
+           match.winnerId = match.battingTeamId;
+           match.resultMessage = `${winner?.teamName || 'Unknown Team'} won by ${ (match.playersPerTeam || 11) - scoreRecord.wickets } wickets`;
+           matchEnded = true;
+        } 
+        // Case 2: Chasing team is all out (wickets reached player count - 1) OR max overs reached
+        else if (scoreRecord.wickets >= (match.playersPerTeam || 11) - 1 || (legalDelivery && (legalBallsBefore + 1) >= maxLegalBalls)) {
+           match.status = 'completed';
+           if (scoreRecord.runs < otherScoreRecord.runs) {
+               const winner = t1Id === targetTeamId ? match.team1Id : match.team2Id;
+               match.winnerId = targetTeamId;
+               match.resultMessage = `${winner?.teamName || 'Winner'} won by ${otherScoreRecord.runs - scoreRecord.runs} runs`;
+           } else {
+               match.winnerId = null;
+               match.resultMessage = "Match Tied";
+           }
+           matchEnded = true;
+        }
 
-    res.json({ success: true, data: scoreRecord });
+        if (matchEnded) {
+           await Match.findByIdAndUpdate(match._id, { 
+             $set: {
+               status: 'completed', 
+               winnerId: match.winnerId, 
+               resultMessage: match.resultMessage,
+               endTime: new Date()
+             }
+           });
+           
+           const populatedMatch = await Match.findById(match._id).populate('winnerId', 'teamName logoURL');
+           io.to(`match:${matchId}`).emit('matchCompleted', { 
+             matchId: match._id, 
+             winnerId: populatedMatch.winnerId, 
+             resultMessage: match.resultMessage,
+             status: 'completed'
+           });
+           
+           // Update Player Global Stats here (similar to completeMatch endpoint)
+           const records = await ScoreRecord.find({ matchId: match._id });
+           for (const record of records) {
+             for (const b of record.batting) {
+               await Player.findByIdAndUpdate(b.playerId, {
+                 $inc: { 
+                   'stats.batting.runs': b.runs, 'stats.batting.ballsFaced': b.ballsFaced,
+                   'stats.batting.fours': b.fours, 'stats.batting.sixes': b.sixes, 'stats.batting.matches': 1
+                 }
+               });
+             }
+             for (const bw of record.bowling) {
+               await Player.findByIdAndUpdate(bw.playerId, {
+                 $inc: {
+                   'stats.bowling.wickets': bw.wickets, 'stats.bowling.runsConceded': bw.runsConceded,
+                   'stats.bowling.ballsBowled': bw.ballsBowled, 'stats.bowling.matches': 1
+                 }
+               });
+             }
+           }
+           if (match.tournamentId) {
+             await delCache(`points:${match.tournamentId}`);
+           }
+        }
+      }
+    }
+
+    // Final success response, including match status for auto-completion feedback
+    res.json({ 
+      success: true, 
+      data: scoreRecord,
+      matchStatus: match.status,
+      winnerId: match.winnerId,
+      resultMessage: match.resultMessage
+    });
   } catch (error) {
     handleServerError(res, error);
   }
@@ -339,16 +463,24 @@ exports.swapInnings = async (req, res) => {
       }
     }
 
-    // Set new batting team
-    const otherTeamId = match.battingTeamId.toString() === match.team1Id.toString() ? match.team2Id : match.team1Id;
-    match.battingTeamId = otherTeamId;
-    match.currentInnings = newInnings;
-    await match.save();
+    // Robustly determine other team ID for inning swap
+    const currentBattingIdStr = match.battingTeamId.toString();
+    const team1IdStr = (match.team1Id?._id || match.team1Id).toString();
+    const otherTeamId = currentBattingIdStr === team1IdStr ? match.team2Id : match.team1Id;
+    
+    await Match.findByIdAndUpdate(matchId, {
+      $set: {
+        battingTeamId: otherTeamId,
+        currentInnings: newInnings
+      }
+    });
+
+    const updatedMatch = await Match.findById(matchId);
 
     const io = req.app.get('io');
     io.to(`match:${matchId}`).emit('inningsSwapped', { matchId, newBattingTeamId: otherTeamId, innings: newInnings });
 
-    res.json({ success: true, data: match });
+    res.json({ success: true, data: updatedMatch });
   } catch (error) {
     handleServerError(res, error);
   }
@@ -365,59 +497,69 @@ exports.completeMatch = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Cannot end match during the first innings. Please swap innings instead.' });
     }
 
-    if (match.battingTeamId) {
-      const scoreRecord = await ScoreRecord.findOne({ matchId: req.params.id, teamId: match.battingTeamId });
-      if (scoreRecord) {
-        const legalBalls = countLegalBalls(scoreRecord.ballByBall);
-        
-        const otherTeamId = match.battingTeamId.toString() === match.team1Id.toString() ? match.team2Id : match.team1Id;
-        const otherScoreRecord = await ScoreRecord.findOne({ matchId: req.params.id, teamId: otherTeamId });
-        
-        let targetReached = false;
-        if (match.currentInnings === 2 && otherScoreRecord) {
-          targetReached = scoreRecord.runs > otherScoreRecord.runs;
+    // Comprehensive Result Calculation
+    const s1 = await ScoreRecord.findOne({ matchId: req.params.id, teamId: match.team1Id });
+    const s2 = await ScoreRecord.findOne({ matchId: req.params.id, teamId: match.team2Id });
+    
+    if (s1 && s2) {
+        if (s1.runs === s2.runs) {
+            match.resultMessage = "Match Tied";
+            match.winnerId = null;
+        } else {
+            const calculatedWinnerId = s1.runs > s2.runs ? match.team1Id?._id : match.team2Id?._id;
+            const winningTeamObj = s1.runs > s2.runs ? match.team1Id : match.team2Id;
+            const winningRecord = s1.runs > s2.runs ? s1 : s2;
+            
+            match.winnerId = winnerId || calculatedWinnerId;
+            const finalWinningTeam = match.winnerId.toString() === match.team1Id?._id.toString() ? match.team1Id : match.team2Id;
+            
+            // Check if it was a chase (Innings 2 victory)
+            if (match.currentInnings === 2 && match.winnerId.toString() === match.battingTeamId?.toString()) {
+                match.resultMessage = `${finalWinningTeam?.teamName || 'Winner'} won by ${ (match.playersPerTeam || 11) - winningRecord.wickets } wickets`;
+            } else {
+                match.resultMessage = `${finalWinningTeam?.teamName || 'Winner'} won by ${Math.abs(s1.runs - s2.runs)} runs`;
+            }
         }
-
-        if (legalBalls % 6 !== 0 && scoreRecord.wickets < 10 && !targetReached) {
-          return res.status(400).json({ success: false, message: 'You need to complete the ongoing over before ending the innings.' });
-        }
-      }
     }
 
     match.status = 'completed';
-    match.winnerId = winnerId || null;
+    match.endTime = new Date();
     await match.save();
 
     // Update Player global stats from all score records of this match
-    const records = await ScoreRecord.find({ matchId: req.params.id });
+    const records = [s1, s2];
     for (const record of records) {
+      if (!record) continue;
       for (const b of record.batting) {
         await Player.findByIdAndUpdate(b.playerId, {
           $inc: { 
-            'stats.batting.runs': b.runs,
-            'stats.batting.ballsFaced': b.ballsFaced,
-            'stats.batting.fours': b.fours,
-            'stats.batting.sixes': b.sixes,
-            'stats.batting.matches': 1
+            'stats.batting.runs': b.runs, 'stats.batting.ballsFaced': b.ballsFaced,
+            'stats.batting.fours': b.fours, 'stats.batting.sixes': b.sixes, 'stats.batting.matches': 1
           }
         });
       }
       for (const bw of record.bowling) {
         await Player.findByIdAndUpdate(bw.playerId, {
           $inc: {
-            'stats.bowling.wickets': bw.wickets,
-            'stats.bowling.runsConceded': bw.runsConceded,
-            'stats.bowling.ballsBowled': bw.ballsBowled,
-            'stats.bowling.matches': 1
+            'stats.bowling.wickets': bw.wickets, 'stats.bowling.runsConceded': bw.runsConceded,
+            'stats.bowling.ballsBowled': bw.ballsBowled, 'stats.bowling.matches': 1
           }
         });
       }
     }
 
+    const populatedMatch = await Match.findById(match._id).populate('winnerId', 'teamName logoURL');
     const io = req.app.get('io');
-    io.to(`match:${match._id}`).emit('matchCompleted', { matchId: match._id, winnerId });
+    io.to(`match:${match._id}`).emit('matchCompleted', { 
+      matchId: match._id, 
+      winnerId: populatedMatch.winnerId, 
+      resultMessage: match.resultMessage,
+      status: 'completed'
+    });
 
-    await delCache(`points:${match.tournamentId}`);
+    if (match.tournamentId) {
+      await delCache(`points:${match.tournamentId}`);
+    }
     res.json({ success: true, data: match });
   } catch (error) {
     handleServerError(res, error);

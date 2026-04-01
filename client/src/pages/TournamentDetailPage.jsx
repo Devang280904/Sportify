@@ -203,7 +203,7 @@ const TournamentDetailPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-txt-primary">{tournament.name}</h1>
-            <p className="text-sm text-txt-muted mt-1">Organized by <span className="font-semibold">{tournament.organizerId?.name}</span></p>
+            <p className="text-sm text-txt-muted mt-1">created by: <span className="font-semibold">{tournament.organizerId?.name}</span></p>
             <div className="flex items-center gap-4 mt-2 text-sm text-txt-secondary">
               <span className="flex items-center gap-1">
                 <HiOutlineCalendar />
@@ -300,9 +300,14 @@ const TournamentDetailPage = () => {
                   <span className="text-txt-muted text-sm">vs</span>
                   <span className="font-medium text-txt-primary">{m.team2Id?.teamName}</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-txt-muted">{new Date(m.matchDate).toLocaleDateString()}</span>
-                  <span className={`badge ${statusColor[m.status] || ''}`}>{m.status}</span>
+                <div className="flex flex-col items-end gap-1">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-txt-muted">{new Date(m.matchDate).toLocaleDateString()}</span>
+                    <span className={`badge ${statusColor[m.status] || ''}`}>{m.status}</span>
+                  </div>
+                  <div className="text-[10px] text-txt-muted/70">
+                    created by: {m.createdBy?.name || tournament.organizerId?.name || 'N/A'}
+                  </div>
                 </div>
               </Link>
             ))}

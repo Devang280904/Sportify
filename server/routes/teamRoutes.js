@@ -2,29 +2,30 @@ const express = require('express');
 const router = express.Router();
 const {
   createTeam, getTeam, getTeams, addPlayer, removePlayer, deleteTeam, uploadPlayers,
-  getMyTeams, cloneTeam
+  getMyTeams, linkTeam, unlinkTeam
 } = require('../controllers/teamController');
-const { protect, isTeamOwner } = require('../middlewares/auth');
+const { protect } = require('../middlewares/auth');
+
+router.get('/my-teams', protect, getMyTeams);
+router.post('/link', protect, linkTeam);
 
 router.route('/')
   .get(protect, getTeams)
   .post(protect, createTeam);
 
-// These must be BEFORE /:id to avoid route conflicts
-router.get('/my-teams', protect, getMyTeams);
-router.post('/clone', protect, cloneTeam);
-
 router.route('/:id')
   .get(protect, getTeam)
-  .delete(protect, isTeamOwner, deleteTeam);
+  .delete(protect, deleteTeam);
+
+router.post('/:id/unlink', protect, unlinkTeam);
 
 router.route('/:id/players')
-  .post(protect, isTeamOwner, addPlayer);
+  .post(protect, addPlayer);
 
 router.route('/:id/players/upload')
-  .post(protect, isTeamOwner, uploadPlayers);
+  .post(protect, uploadPlayers);
 
 router.route('/:id/players/:playerId')
-  .delete(protect, isTeamOwner, removePlayer);
+  .delete(protect, removePlayer);
 
 module.exports = router;

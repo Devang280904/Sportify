@@ -33,7 +33,8 @@ const isOwner = async (req, res, next) => {
     if (!tournament) {
       return res.status(404).json({ success: false, message: 'Tournament not found' });
     }
-    if (tournament.organizerId.toString() !== req.user.id) {
+    const organizerId = (tournament.organizerId?._id || tournament.organizerId)?.toString();
+    if (organizerId !== req.user.id) {
       return res.status(403).json({ success: false, message: 'You cannot add or modify another user’s tournament/match.' });
     }
     req.tournament = tournament;
@@ -50,37 +51,52 @@ const isMatchOwner = async (req, res, next) => {
     if (!match) {
       return res.status(404).json({ success: false, message: 'Match not found' });
     }
-    const tournament = await Tournament.findById(match.tournamentId);
-    if (!tournament) {
-      return res.status(404).json({ success: false, message: 'Tournament not found' });
+    if (match.tournamentId) {
+      const tournament = await Tournament.findById(match.tournamentId);
+      if (!tournament) {
+        return res.status(404).json({ success: false, message: 'Tournament not found' });
+      }
+      const organizerId = (tournament.organizerId?._id || tournament.organizerId)?.toString();
+      if (organizerId !== req.user.id) {
+        return res.status(403).json({ success: false, message: 'You cannot modify this match as you are not the tournament organizer.' });
+      }
+      req.tournament = tournament;
+    } else {
+      // Independent Match: Check the match creator directly
+      const creatorId = (match.createdBy?._id || match.createdBy)?.toString();
+      if (creatorId !== req.user.id) {
+        return res.status(403).json({ success: false, message: 'You cannot modify this independent match as you are not the creator.' });
+      }
     }
-    if (tournament.organizerId.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'You cannot add or modify another user’s tournament/match.' });
-    }
+    
     req.match = match;
-    req.tournament = tournament;
     next();
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Ownership middleware for teams: looks up team -> tournament -> organizerId
+// Ownership middleware for teams: handles both original creator and tournament organizers
 const isTeamOwner = async (req, res, next) => {
   try {
-    const team = await Team.findById(req.params.id);
+    const team = await Team.findById(req.params.id).populate('tournamentIds');
     if (!team) {
       return res.status(404).json({ success: false, message: 'Team not found' });
     }
-    const tournament = await Tournament.findById(team.tournamentId);
-    if (!tournament) {
-      return res.status(404).json({ success: false, message: 'Tournament not found' });
+
+    // 1. Direct Ownership
+    const isCreator = team.createdBy?.toString() === req.user.id;
+    
+    // 2. Tournament Participation (if any organizer matches current user)
+    const isOrganizer = team.tournamentIds && team.tournamentIds.some(t => 
+      (t.organizerId?._id || t.organizerId)?.toString() === req.user.id
+    );
+
+    if (!isCreator && !isOrganizer) {
+      return res.status(403).json({ success: false, message: 'You are not authorized to manage this team.' });
     }
-    if (tournament.organizerId.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'You cannot add or modify another user’s tournament/match.' });
-    }
+
     req.team = team;
-    req.tournament = tournament;
     next();
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

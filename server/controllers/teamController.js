@@ -2,28 +2,38 @@ const Team = require('../models/Team');
 const Player = require('../models/Player');
 const Tournament = require('../models/Tournament');
 
-// @desc    Create team
+// @desc    Create team and optionally link to a tournament
 // @route   POST /api/teams
 exports.createTeam = async (req, res) => {
   try {
     const { teamName, tournamentId, captainId, logoURL } = req.body;
 
-    const tournament = await Tournament.findById(tournamentId);
-    if (!tournament) {
-      return res.status(404).json({ success: false, message: 'Tournament not found' });
+    // 1. Find if team already exists for this user globally
+    let team = await Team.findOne({ createdBy: req.user.id, teamName: teamName.trim() });
+
+    if (!team) {
+      // 2. Create if not exists
+      team = await Team.create({
+        teamName: teamName.trim(),
+        tournamentIds: tournamentId ? [tournamentId] : [],
+        captainId: captainId || req.user.id,
+        createdBy: req.user.id,
+        logoURL,
+      });
+    } else {
+      // 3. If exists, just add the new tournamentId if provided
+      if (tournamentId && !team.tournamentIds.map(id => id.toString()).includes(tournamentId.toString())) {
+        team.tournamentIds.push(tournamentId);
+        await team.save();
+      }
     }
 
-    const team = await Team.create({
-      teamName,
-      tournamentId,
-      captainId: captainId || req.user.id,
-      createdBy: req.user.id,
-      logoURL,
-    });
-
-    // Add team to tournament
-    tournament.teams.push(team._id);
-    await tournament.save();
+    // 4. Update tournament to include this team
+    if (tournamentId) {
+      await Tournament.findByIdAndUpdate(tournamentId, {
+        $addToSet: { teams: team._id }
+      });
+    }
 
     res.status(201).json({ success: true, data: team });
   } catch (error) {
@@ -40,7 +50,7 @@ exports.getTeam = async (req, res) => {
       .populate('captainId', 'name email')
       .populate('createdBy', 'name email')
       .populate({
-        path: 'tournamentId',
+        path: 'tournamentIds',
         select: 'name organizerId',
         populate: {
           path: 'organizerId',
@@ -62,14 +72,14 @@ exports.getTeams = async (req, res) => {
   try {
     const filter = {};
     if (req.query.tournamentId) {
-      filter.tournamentId = req.query.tournamentId;
+      filter.tournamentIds = req.query.tournamentId;
     }
     const teams = await Team.find(filter)
       .populate('players')
       .populate('captainId', 'name email')
       .populate('createdBy', 'name email')
       .populate({
-        path: 'tournamentId',
+        path: 'tournamentIds',
         select: 'name organizerId',
         populate: {
           path: 'organizerId',
@@ -95,7 +105,7 @@ exports.getMyTeams = async (req, res) => {
     const teams = await Team.find({
       $or: [
         { createdBy: req.user.id },
-        { tournamentId: { $in: tournamentIds } },
+        { tournamentIds: { $in: tournamentIds } },
       ],
     })
       .sort({ createdAt: -1 })
@@ -103,7 +113,7 @@ exports.getMyTeams = async (req, res) => {
       .populate('captainId', 'name email')
       .populate('createdBy', 'name email')
       .populate({
-        path: 'tournamentId',
+        path: 'tournamentIds',
         select: 'name organizerId',
         populate: {
           path: 'organizerId',
@@ -127,70 +137,48 @@ exports.getMyTeams = async (req, res) => {
   }
 };
 
-// @desc    Clone an existing team (with players) into a different tournament
-// @route   POST /api/teams/clone
-exports.cloneTeam = async (req, res) => {
+// @desc    Link an existing global team to a tournament (No longer clones records)
+// @route   POST /api/teams/link
+exports.linkTeam = async (req, res) => {
   try {
     const { sourceTeamId, targetTournamentId } = req.body;
 
-    const sourceTeam = await Team.findById(sourceTeamId).populate('players');
+    const sourceTeam = await Team.findById(sourceTeamId);
     if (!sourceTeam) {
-      return res.status(404).json({ success: false, message: 'Source team not found' });
+      return res.status(404).json({ success: false, message: 'Team not found' });
     }
 
     const targetTournament = await Tournament.findById(targetTournamentId);
     if (!targetTournament) {
-      return res.status(404).json({ success: false, message: 'Target tournament not found' });
+      return res.status(404).json({ success: false, message: 'Tournament not found' });
     }
 
     // Check user owns target tournament
     if (targetTournament.organizerId.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Not authorized to add teams to this tournament' });
+      return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
-    // Check if a team with same name already exists in target tournament
-    const existing = await Team.findOne({ teamName: sourceTeam.teamName, tournamentId: targetTournamentId });
-    if (existing) {
-      return res.status(400).json({ success: false, message: `Team "${sourceTeam.teamName}" already exists in this tournament` });
+    // Strict validation: Team MUST match the tournament's playersPerTeam requirement
+    const requiredPlayers = targetTournament.playersPerTeam || 11;
+    if (sourceTeam.players.length !== requiredPlayers) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Team "${sourceTeam.teamName}" has ${sourceTeam.players.length} players, but this tournament requires exactly ${requiredPlayers} players per team. Please edit the team to match the requirement before linking.` 
+      });
     }
 
-    // Create the cloned team
-    const clonedTeam = await Team.create({
-      teamName: sourceTeam.teamName,
-      tournamentId: targetTournamentId,
-      captainId: req.user.id,
-      createdBy: req.user.id,
-      logoURL: sourceTeam.logoURL,
+    // 1. Link team to tournament (avoid duplicates)
+    if (!sourceTeam.tournamentIds.map(id => id.toString()).includes(targetTournamentId)) {
+      sourceTeam.tournamentIds.push(targetTournamentId);
+      await sourceTeam.save();
+    }
+
+    // 2. Link tournament to team (avoid duplicates)
+    await Tournament.findByIdAndUpdate(targetTournamentId, {
+      $addToSet: { teams: sourceTeamId }
     });
 
-    // Clone players
-    const clonedPlayerIds = [];
-    for (const player of sourceTeam.players) {
-      const clonedPlayer = await Player.create({
-        name: player.name,
-        role: player.role,
-        battingStyle: player.battingStyle,
-        bowlingStyle: player.bowlingStyle,
-        teamId: clonedTeam._id,
-      });
-      clonedPlayerIds.push(clonedPlayer._id);
-    }
-
-    clonedTeam.players = clonedPlayerIds;
-    clonedTeam.playerNumber = clonedPlayerIds.length;
-    await clonedTeam.save();
-
-    // Add team to tournament
-    targetTournament.teams.push(clonedTeam._id);
-    await targetTournament.save();
-
-    // Return populated team
-    const populated = await Team.findById(clonedTeam._id)
-      .populate('players')
-      .populate('captainId', 'name email')
-      .populate('tournamentId', 'name');
-
-    res.status(201).json({ success: true, data: populated });
+    res.status(200).json({ success: true, message: "Team linked successfully", data: sourceTeam });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -203,7 +191,7 @@ exports.addPlayer = async (req, res) => {
     const team = await Team.findById(req.params.id)
       .populate('createdBy')
       .populate({
-        path: 'tournamentId',
+        path: 'tournamentIds',
         populate: {
           path: 'organizerId'
         }
@@ -213,12 +201,12 @@ exports.addPlayer = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Team not found' });
     }
 
-    // Check if user is the team creator or tournament organizer
+    // Check if user is the team creator or any tournament organizer
     const isTeamCreator = team.createdBy && (team.createdBy._id.toString() === req.user.id || team.createdBy._id.toString() === req.user._id);
-    const isTournamentOrganizer = team.tournamentId.organizerId && (team.tournamentId.organizerId._id.toString() === req.user.id || team.tournamentId.organizerId._id.toString() === req.user._id);
+    const isAnyTournamentOrganizer = team.tournamentIds.some(t => t.organizerId && (t.organizerId._id.toString() === req.user.id || t.organizerId._id.toString() === req.user._id));
 
-    if (!isTeamCreator && !isTournamentOrganizer) {
-      return res.status(403).json({ success: false, message: 'You do not have permission to add players to this team' });
+    if (!isTeamCreator && !isAnyTournamentOrganizer) {
+      return res.status(403).json({ success: false, message: 'No permission' });
     }
 
     if (team.players.length >= 11) {
@@ -251,7 +239,7 @@ exports.removePlayer = async (req, res) => {
     const team = await Team.findById(req.params.id)
       .populate('createdBy')
       .populate({
-        path: 'tournamentId',
+        path: 'tournamentIds',
         populate: {
           path: 'organizerId'
         }
@@ -261,12 +249,12 @@ exports.removePlayer = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Team not found' });
     }
 
-    // Check if user is the team creator or tournament organizer
+    // Check if user is the team creator or any tournament organizer
     const isTeamCreator = team.createdBy && (team.createdBy._id.toString() === req.user.id || team.createdBy._id.toString() === req.user._id);
-    const isTournamentOrganizer = team.tournamentId.organizerId && (team.tournamentId.organizerId._id.toString() === req.user.id || team.tournamentId.organizerId._id.toString() === req.user._id);
+    const isAnyTournamentOrganizer = team.tournamentIds.some(t => t.organizerId && (t.organizerId._id.toString() === req.user.id || t.organizerId._id.toString() === req.user._id));
 
-    if (!isTeamCreator && !isTournamentOrganizer) {
-      return res.status(403).json({ success: false, message: 'You do not have permission to remove players from this team' });
+    if (!isTeamCreator && !isAnyTournamentOrganizer) {
+      return res.status(403).json({ success: false, message: 'No permission' });
     }
 
     team.players = team.players.filter(p => p.toString() !== req.params.playerId);
@@ -287,65 +275,76 @@ exports.deleteTeam = async (req, res) => {
   try {
     const team = await Team.findById(req.params.id);
     if (!team) {
-      return res.status(404).json({ success: false, message: 'Team not found' });
+       return res.status(404).json({ success: false, message: 'Team not found' });
     }
 
-    // Verify ownership or admin
-    const tournament = await Tournament.findById(team.tournamentId);
-    if (!tournament) {
-      return res.status(404).json({ success: false, message: 'Associated tournament not found' });
+    // Validate: cannot delete if used in tournaments
+    if (team.tournamentIds && team.tournamentIds.length > 0) {
+      return res.status(400).json({ success: false, message: `Cannot delete team "${team.teamName}" because it is currently linked to ${team.tournamentIds.length} tournament(s). Unlink it from all tournaments first.` });
     }
 
-    if (tournament.organizerId.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Not authorized to delete this team' });
+    // Verify ownership
+    if (team.createdBy.toString() !== req.user.id) {
+       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
     const mongoose = require('mongoose');
     const Player = mongoose.model('Player');
-    const Match = mongoose.model('Match');
-    const ScoreRecord = mongoose.model('ScoreRecord');
-
-    // Remove the team from the tournament's teams array
-    await Tournament.findByIdAndUpdate(team.tournamentId, {
-      $pull: { teams: team._id }
-    });
 
     // Delete all players associated with this team
     if (team.players && team.players.length > 0) {
       await Player.deleteMany({ _id: { $in: team.players } });
     }
 
-    // Delete matches and their score records where this team is playing
-    const matches = await Match.find({ $or: [{ team1Id: team._id }, { team2Id: team._id }] });
-    const matchIds = matches.map(m => m._id);
-
-    if (matchIds.length > 0) {
-      // Delete ScoreRecords for these matches
-      await ScoreRecord.deleteMany({ matchId: { $in: matchIds } });
-      // Delete the matches themselves
-      await Match.deleteMany({ _id: { $in: matchIds } });
-    }
-
-    // Delete all ScoreRecords specifically mapped to this team 
-    // (belt and suspenders, though the above match block handles it)
-    await ScoreRecord.deleteMany({ teamId: team._id });
-
-    // Delete the team
+    // Final global delete
     await Team.findByIdAndDelete(req.params.id);
 
-    res.json({ success: true, message: 'Team and perfectly associated players/matches deleted' });
+    res.json({ success: true, message: 'Team deleted' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Unlink a team from a specific tournament
+// @route   POST /api/teams/:id/unlink
+exports.unlinkTeam = async (req, res) => {
+  try {
+    const { tournamentId } = req.body;
+    const team = await Team.findById(req.params.id);
+    if (!team) return res.status(404).json({ success: false, message: 'Team not found' });
+
+    const tournament = await Tournament.findById(tournamentId);
+    if (!tournament) return res.status(404).json({ success: false, message: 'Tournament not found' });
+
+    // Check authorization (Tournament organizer or Team creator)
+    if (tournament.organizerId.toString() !== req.user.id && team.createdBy.toString() !== req.user.id) {
+       return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    // 1. Remove tournament from team
+    team.tournamentIds = team.tournamentIds.filter(id => id.toString() !== tournamentId);
+    await team.save();
+
+    // 2. Remove team from tournament
+    await Tournament.findByIdAndUpdate(tournamentId, {
+      $pull: { teams: team._id }
+    });
+
+    res.json({ success: true, message: 'Team unlinked from tournament' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // @desc    Upload players to team
 // @route   POST /api/teams/:id/players/upload
 exports.uploadPlayers = async (req, res) => {
   try {
     const team = await Team.findById(req.params.id)
       .populate('createdBy')
+      .populate('players') // Populate players to check for duplicates
       .populate({
-        path: 'tournamentId',
+        path: 'tournamentIds',
         populate: {
           path: 'organizerId'
         }
@@ -355,12 +354,12 @@ exports.uploadPlayers = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Team not found' });
     }
 
-    // Check if user is the team creator or tournament organizer
+    // Check if user is the team creator or any tournament organizer
     const isTeamCreator = team.createdBy && (team.createdBy._id.toString() === req.user.id || team.createdBy._id.toString() === req.user._id);
-    const isTournamentOrganizer = team.tournamentId.organizerId && (team.tournamentId.organizerId._id.toString() === req.user.id || team.tournamentId.organizerId._id.toString() === req.user._id);
+    const isAnyTournamentOrganizer = team.tournamentIds.some(t => t.organizerId && (t.organizerId._id.toString() === req.user.id || t.organizerId._id.toString() === req.user._id));
 
-    if (!isTeamCreator && !isTournamentOrganizer) {
-      return res.status(403).json({ success: false, message: 'You do not have permission to upload players to this team' });
+    if (!isTeamCreator && !isAnyTournamentOrganizer) {
+      return res.status(403).json({ success: false, message: 'No permission' });
     }
 
     const { players } = req.body;
@@ -397,11 +396,18 @@ exports.uploadPlayers = async (req, res) => {
       else if (boLower.includes('fast') || boLower.includes('pace')) boStyle = 'right arm pacer'; // Default pacer to right arm
 
       // Robust mapping for role
-      let r = role.toLowerCase().trim();
+      let r = (role || '').toLowerCase().trim();
       if (r.includes('wicket') || r === 'wk' || r === 'keeper') r = 'wicketkeeper';
       else if (r.includes('all')) r = 'allrounder';
       else if (r.includes('bat')) r = 'batsman';
       else if (r.includes('bowl')) r = 'bowler';
+      else r = 'batsman'; // Default to batsman if unknown
+
+      // Duplicate check (by name, case-insensitive)
+      const isDuplicate = team.players.some(p => p.name?.toLowerCase() === name.trim().toLowerCase());
+      if (isDuplicate) {
+         continue; // Skip duplicates silently or handle as error
+      }
 
       const player = await Player.create({
         name,

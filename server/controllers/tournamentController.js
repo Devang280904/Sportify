@@ -5,7 +5,7 @@ const { getCache, setCache, delCache } = require('../config/redis');
 // @route   POST /api/tournaments
 exports.createTournament = async (req, res) => {
   try {
-    const { name, startDate, endDate, status } = req.body;
+    const { name, startDate, endDate, status, playersPerTeam } = req.body;
 
     // Validate dates
     const today = new Date();
@@ -35,6 +35,7 @@ exports.createTournament = async (req, res) => {
       endDate,
       status: status || 'upcoming',
       organizerId: req.user.id,
+      playersPerTeam: playersPerTeam || 11,
     });
     await delCache('tournaments:all');
     res.status(201).json({ success: true, data: tournament });
@@ -152,8 +153,11 @@ exports.deleteTournament = async (req, res) => {
     // Delete all Matches
     await Match.deleteMany({ tournamentId: req.params.id });
 
-    // Delete all Teams
-    await Team.deleteMany({ tournamentId: req.params.id });
+    // Unlink all teams from this tournament instead of deleting them globally
+    await Team.updateMany(
+      { tournamentIds: req.params.id },
+      { $pull: { tournamentIds: req.params.id } }
+    );
 
     // Finally, delete the Tournament
     await Tournament.findByIdAndDelete(req.params.id);

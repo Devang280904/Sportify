@@ -299,7 +299,7 @@ exports.updateScore = async (req, res) => {
            const winner = bTeamId === t1Id ? match.team1Id : match.team2Id;
            match.status = 'completed';
            match.winnerId = match.battingTeamId;
-           match.resultMessage = `${winner?.teamName || 'Unknown Team'} won by ${ (match.playersPerTeam || 11) - scoreRecord.wickets } wickets`;
+           match.resultMessage = `${winner?.teamName || 'Unknown Team'} won by ${ (match.playersPerTeam || 11) - 1 - scoreRecord.wickets } wickets`;
            matchEnded = true;
         } 
         // Case 2: Chasing team is all out (wickets reached player count - 1) OR max overs reached
@@ -515,7 +515,7 @@ exports.completeMatch = async (req, res) => {
             
             // Check if it was a chase (Innings 2 victory)
             if (match.currentInnings === 2 && match.winnerId.toString() === match.battingTeamId?.toString()) {
-                match.resultMessage = `${finalWinningTeam?.teamName || 'Winner'} won by ${ (match.playersPerTeam || 11) - winningRecord.wickets } wickets`;
+                match.resultMessage = `${finalWinningTeam?.teamName || 'Winner'} won by ${ (match.playersPerTeam || 11) - 1 - winningRecord.wickets } wickets`;
             } else {
                 match.resultMessage = `${finalWinningTeam?.teamName || 'Winner'} won by ${Math.abs(s1.runs - s2.runs)} runs`;
             }
@@ -573,7 +573,13 @@ exports.getMatchSummary = async (req, res) => {
     const match = await Match.findById(req.params.id)
       .populate('team1Id', 'teamName logoURL')
       .populate('team2Id', 'teamName logoURL')
-      .populate('winnerId', 'teamName');
+      .populate('winnerId', 'teamName')
+      .populate('createdBy', 'name')
+      .populate({
+        path: 'tournamentId',
+        select: 'name organizerId',
+        populate: { path: 'organizerId', select: 'name' }
+      });
     
     if (!match) return res.status(404).json({ success: false, message: 'Match not found' });
 
@@ -593,15 +599,29 @@ exports.getPointsTable = async (req, res) => {
     const cached = await getCache(cacheKey);
     if (cached) return res.json({ success: true, data: cached, cached: true });
 
-    const matches = await Match.find({ tournamentId, status: 'completed' }).lean();
+    // Fetch the tournament to get ALL registered teams (even those with 0 matches)
+    const Tournament = require('../models/Tournament');
+    const tournament = await Tournament.findById(tournamentId).lean();
+    if (!tournament) return res.status(404).json({ success: false, message: 'Tournament not found' });
+
     const pointsMap = {};
+
+    // Pre-seed every registered team with zeroes
+    for (const teamId of tournament.teams) {
+      const key = teamId.toString();
+      pointsMap[key] = { teamId: key, played: 0, won: 0, lost: 0, tied: 0, points: 0 };
+    }
+
+    // Now process completed matches to fill in real stats
+    const matches = await Match.find({ tournamentId, status: 'completed' }).lean();
 
     for (const match of matches) {
       const t1 = match.team1Id.toString();
       const t2 = match.team2Id.toString();
 
-      if (!pointsMap[t1]) pointsMap[t1] = { teamId: t1, played: 0, won: 0, lost: 0, points: 0 };
-      if (!pointsMap[t2]) pointsMap[t2] = { teamId: t2, played: 0, won: 0, lost: 0, points: 0 };
+      // Safety: add if team wasn't in the tournament.teams list for any reason
+      if (!pointsMap[t1]) pointsMap[t1] = { teamId: t1, played: 0, won: 0, lost: 0, tied: 0, points: 0 };
+      if (!pointsMap[t2]) pointsMap[t2] = { teamId: t2, played: 0, won: 0, lost: 0, tied: 0, points: 0 };
 
       pointsMap[t1].played++;
       pointsMap[t2].played++;
@@ -613,12 +633,19 @@ exports.getPointsTable = async (req, res) => {
         pointsMap[winner].points += 2;
         pointsMap[loser].lost++;
       } else {
+        // Tie
+        pointsMap[t1].tied++;
         pointsMap[t1].points += 1;
+        pointsMap[t2].tied++;
         pointsMap[t2].points += 1;
       }
     }
 
-    const pointsTable = Object.values(pointsMap).sort((a, b) => b.points - a.points);
+    // Sort: points desc, then won desc
+    const pointsTable = Object.values(pointsMap).sort((a, b) =>
+      b.points !== a.points ? b.points - a.points : b.won - a.won
+    );
+
     const teams = await Team.find({ _id: { $in: pointsTable.map(e => e.teamId) } }).select('teamName logoURL').lean();
     const teamsById = new Map(teams.map(t => [t._id.toString(), t]));
 
@@ -633,3 +660,4 @@ exports.getPointsTable = async (req, res) => {
     handleServerError(res, error);
   }
 };
+

@@ -612,33 +612,44 @@ const LiveScoringPage = () => {
           </div>
           <div>
             <h2 className="text-2xl font-black text-txt-primary uppercase tracking-widest mb-2">Match Setup</h2>
-            <p className="text-txt-muted text-sm font-medium">Decide the toss and start the live scoring</p>
-          </div>
-          <div className="flex flex-col sm:flex-row justify-center gap-4 max-w-sm mx-auto">
-            <button
-              onClick={async () => {
-                try {
-                  const res = await api.post(`/matches/${id}/start`, { battingTeamId: (match.team1Id?._id || match.team1Id) });
-                  setMatch(res.data.data);
-                  setActiveTeamId(res.data.data.battingTeamId);
-                } catch (e) { alert(e.response?.data?.message || 'Failed to start match'); }
-              }}
-              className="btn-primary flex-1 py-4 text-sm font-black uppercase tracking-widest shadow-xl shadow-primary/20"
-            >
-              🏏 {match.team1Id?.teamName} Bats
-            </button>
-            <button
-              onClick={async () => {
-                try {
-                  const res = await api.post(`/matches/${id}/start`, { battingTeamId: (match.team2Id?._id || match.team2Id) });
-                  setMatch(res.data.data);
-                  setActiveTeamId(res.data.data.battingTeamId);
-                } catch (e) { alert(e.response?.data?.message || 'Failed to start match'); }
-              }}
-              className="btn-secondary flex-1 py-4 text-sm font-black uppercase tracking-widest shadow-xl shadow-secondary/20"
-            >
-              🏏 {match.team2Id?.teamName} Bats
-            </button>
+            {new Date(Date.now() + 15 * 60000) < new Date(match.matchDate) ? (
+              <div className="space-y-4">
+                <p className="text-txt-muted text-sm font-medium">The match is scheduled for {new Date(match.matchDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.<br/>You can set up the toss 15 minutes prior to the start time.</p>
+                <div className="inline-block bg-surface-alt border border-surface-border text-txt-secondary font-bold px-6 py-3 rounded-full uppercase tracking-widest text-xs">
+                  Awaiting Match Time
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-txt-muted text-sm font-medium mb-6">Decide the toss and start the live scoring</p>
+                <div className="flex flex-col sm:flex-row justify-center gap-4 max-w-sm mx-auto">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await api.post(`/matches/${id}/start`, { battingTeamId: (match.team1Id?._id || match.team1Id) });
+                        setMatch(res.data.data);
+                        setActiveTeamId(res.data.data.battingTeamId);
+                      } catch (e) { alert(e.response?.data?.message || 'Failed to start match'); }
+                    }}
+                    className="btn-primary flex-1 py-4 text-sm font-black uppercase tracking-widest shadow-xl shadow-primary/20"
+                  >
+                    🏏 {match.team1Id?.teamName} Bats
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await api.post(`/matches/${id}/start`, { battingTeamId: (match.team2Id?._id || match.team2Id) });
+                        setMatch(res.data.data);
+                        setActiveTeamId(res.data.data.battingTeamId);
+                      } catch (e) { alert(e.response?.data?.message || 'Failed to start match'); }
+                    }}
+                    className="btn-secondary flex-1 py-4 text-sm font-black uppercase tracking-widest shadow-xl shadow-secondary/20"
+                  >
+                    🏏 {match.team2Id?.teamName} Bats
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

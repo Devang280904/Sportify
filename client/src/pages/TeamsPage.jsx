@@ -87,9 +87,9 @@ const TeamsPage = () => {
         <div className="flex flex-col sm:flex-row items-center gap-3">
           <div className="relative w-full sm:w-64">
             <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-txt-muted" />
-            <input 
-              type="text" 
-              placeholder="Search teams..." 
+            <input
+              type="text"
+              placeholder="Search teams..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="input pl-10 h-10 text-sm"
@@ -105,23 +105,21 @@ const TeamsPage = () => {
 
       {/* Tabs */}
       <div className="flex bg-surface-card rounded-lg border border-surface-border p-1">
-        <button 
+        <button
           onClick={() => setFilter('myTeams')}
-          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-            filter === 'myTeams' 
-              ? 'bg-primary text-white shadow-sm' 
+          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${filter === 'myTeams'
+              ? 'bg-primary text-white shadow-sm'
               : 'text-txt-secondary hover:text-primary'
-          }`}
+            }`}
         >
           My Teams
         </button>
-        <button 
+        <button
           onClick={() => setFilter('otherTeams')}
-          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-            filter === 'otherTeams' 
-              ? 'bg-primary text-white shadow-sm' 
+          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${filter === 'otherTeams'
+              ? 'bg-primary text-white shadow-sm'
               : 'text-txt-secondary hover:text-primary'
-          }`}
+            }`}
         >
           Other Teams
         </button>
@@ -131,20 +129,20 @@ const TeamsPage = () => {
       {(() => {
         const userId = user?.id || user?._id;
         const filteredTeams = teams.filter(t => {
-            const creatorId = t.createdBy?._id || t.createdBy;
-            const isCreator = userId && creatorId && userId.toString() === creatorId.toString();
-            const isAnyOrganizer = userId && t.tournamentIds?.some(tout => {
-              const orgId = tout.organizerId?._id || tout.organizerId;
-              return orgId && orgId.toString() === userId.toString();
-            });
-            const isMine = isCreator || isAnyOrganizer;
-            
-            // Search filter
-            const matchesSearch = t.teamName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                 (t.tournamentIds?.[0]?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
-            
-            if (!matchesSearch) return false;
-            return filter === 'myTeams' ? isMine : !isMine;
+          const creatorId = t.createdBy?._id || t.createdBy;
+          const isCreator = userId && creatorId && userId.toString() === creatorId.toString();
+          const isAnyOrganizer = userId && t.tournamentIds?.some(tout => {
+            const orgId = tout.organizerId?._id || tout.organizerId;
+            return orgId && orgId.toString() === userId.toString();
+          });
+          const isMine = isCreator || isAnyOrganizer;
+
+          // Search filter
+          const matchesSearch = t.teamName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (t.tournamentIds?.[0]?.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+
+          if (!matchesSearch) return false;
+          return filter === 'myTeams' ? isMine : !isMine;
         });
 
         return filteredTeams.length > 0 ? (
@@ -169,14 +167,14 @@ const TeamsPage = () => {
                   </div>
                   <div className="mt-4">
                     <div className="w-full bg-surface rounded-full h-2">
-                      <div className="bg-accent rounded-full h-2 transition-all" 
+                      <div className="bg-accent rounded-full h-2 transition-all"
                         style={{ width: `${((team.players?.length || 0) / 11) * 100}%` }}></div>
                     </div>
                   </div>
                 </Link>
-                
+
                 {canDelete(team) && (
-                  <button 
+                  <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowDeleteModal(team); }}
                     className="absolute top-4 right-4 p-2 text-txt-muted hover:text-danger hover:bg-danger/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
                     title="Delete Team"
@@ -190,12 +188,12 @@ const TeamsPage = () => {
         ) : (
           <div className="card text-center py-12 bg-surface/50 border-dashed animate-fade-in">
             <p className="text-txt-muted font-medium">
-              {filter === 'myTeams' 
-                ? 'You haven\'t created any teams yet.' 
+              {filter === 'myTeams'
+                ? 'You haven\'t created any teams yet.'
                 : 'No teams available.'}
             </p>
             {filter === 'myTeams' && user && (
-              <button 
+              <button
                 onClick={() => setShowModal(true)}
                 className="mt-4 btn-primary py-2 px-6"
               >
@@ -219,12 +217,12 @@ const TeamsPage = () => {
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
                 <label className="label">Team Name</label>
-                <input value={form.teamName} onChange={e => setForm({...form, teamName: e.target.value})}
+                <input value={form.teamName} onChange={e => setForm({ ...form, teamName: e.target.value })}
                   className="input" placeholder="Mumbai Indians" required />
               </div>
               <div>
                 <label className="label">Tournament (Optional)</label>
-                <select value={form.tournamentId} onChange={e => setForm({...form, tournamentId: e.target.value})}
+                <select value={form.tournamentId} onChange={e => setForm({ ...form, tournamentId: e.target.value })}
                   className="input">
                   <option value="">No Tournament (Global Team)</option>
                   {tournaments.map(t => (
@@ -249,19 +247,19 @@ const TeamsPage = () => {
             </div>
             <h2 className="text-xl font-bold text-center text-txt-primary mb-2">Delete Team?</h2>
             <p className="text-center text-txt-secondary mb-6">
-              Are you sure you want to delete <span className="font-bold text-txt-primary">{showDeleteModal.teamName}</span>?<br/>
+              Are you sure you want to delete <span className="font-bold text-txt-primary">{showDeleteModal.teamName}</span>?<br />
               <span className="text-danger font-medium mt-1 inline-block">This action will also permanently delete all players, matches, and score records associated with this team. This cannot be undone.</span>
             </p>
             <div className="flex gap-3">
-              <button 
-                onClick={() => setShowDeleteModal(null)} 
+              <button
+                onClick={() => setShowDeleteModal(null)}
                 disabled={saving}
                 className="btn-outline flex-1 py-2.5"
               >
                 Cancel
               </button>
-              <button 
-                onClick={handleDelete} 
+              <button
+                onClick={handleDelete}
                 disabled={saving}
                 className="btn-danger flex-1 py-2.5 shadow-lg shadow-danger/30"
               >

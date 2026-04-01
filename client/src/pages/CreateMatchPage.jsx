@@ -149,7 +149,7 @@ const CreateMatchPage = () => {
     setSaving(true);
     try {
       const res = await api.post('/matches', form);
-      navigate(`/match/${res.data.data._id}`);
+      navigate(`/match/${res.data.data._id}/score`);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create match');
     } finally {

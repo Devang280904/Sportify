@@ -125,38 +125,7 @@ const DashboardPage = () => {
         )}
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-b border-surface-border pb-8">
-        <div className="card bg-gradient-to-br from-primary to-primary-light text-white transition-transform hover:-translate-y-1">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-white/70 text-sm">All Tournaments</p>
-              <p className="text-3xl font-bold mt-1">{stats.tournaments}</p>
-            </div>
-            <HiOutlineCollection className="text-4xl text-white/30" />
-          </div>
-        </div>
-        <div className="card bg-gradient-to-br from-secondary to-secondary-dark text-white transition-transform hover:-translate-y-1">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-white/70 text-sm">All Teams</p>
-              <p className="text-3xl font-bold mt-1">{stats.teams}</p>
-            </div>
-            <HiOutlineUserGroup className="text-4xl text-white/30" />
-          </div>
-        </div>
-        <div className="card bg-gradient-to-br from-accent to-accent-dark text-white transition-transform hover:-translate-y-1">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-white/70 text-sm">Matches</p>
-              <p className="text-3xl font-bold mt-1">{stats.matches}</p>
-            </div>
-            <MdSportsCricket className="text-4xl text-white/30" />
-          </div>
-        </div>
-      </div>
 
-      <div className="border-t border-surface-border"></div>
 
       {/* LOCAL TOURNAMENTS SECTION */}
       <div>

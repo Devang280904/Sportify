@@ -55,6 +55,7 @@ const PointsTablePage = () => {
                   <th className="text-center px-4 py-4 text-sm font-semibold">P</th>
                   <th className="text-center px-4 py-4 text-sm font-semibold">W</th>
                   <th className="text-center px-4 py-4 text-sm font-semibold">L</th>
+                  <th className="text-center px-4 py-4 text-sm font-semibold">T</th>
                   <th className="text-center px-4 py-4 text-sm font-semibold">Pts</th>
                 </tr>
               </thead>
@@ -65,15 +66,16 @@ const PointsTablePage = () => {
                     <td className="px-6 py-4 font-bold text-txt-primary">{idx + 1}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-3">
-                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                          {team.teamName?.charAt(0)}
-                        </div>
-                        <span className="font-medium text-txt-primary">{team.teamName}</span>
+                         <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                           {team.teamName?.charAt(0)}
+                         </div>
+                         <span className="font-medium text-txt-primary">{team.teamName}</span>
                       </div>
                     </td>
                     <td className="text-center px-4 py-4 text-txt-secondary">{team.played}</td>
                     <td className="text-center px-4 py-4 text-accent font-semibold">{team.won}</td>
                     <td className="text-center px-4 py-4 text-danger font-semibold">{team.lost}</td>
+                    <td className="text-center px-4 py-4 text-warning font-semibold">{team.tied || 0}</td>
                     <td className="text-center px-4 py-4">
                       <span className="bg-primary/10 text-primary font-bold px-3 py-1 rounded-full text-sm">
                         {team.points}
@@ -87,7 +89,7 @@ const PointsTablePage = () => {
         ) : (
           <div className="text-center py-16">
             <HiOutlineChartBar className="text-5xl text-txt-muted mx-auto mb-3" />
-            <p className="text-txt-muted">No completed matches yet</p>
+            <p className="text-txt-muted">No teams registered in this tournament yet</p>
           </div>
         )}
       </div>

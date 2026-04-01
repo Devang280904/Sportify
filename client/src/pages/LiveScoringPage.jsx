@@ -31,30 +31,50 @@ const LiveScoringPage = () => {
 
   useEffect(() => {
     fetchMatch();
-    joinMatch(id);
-  }, [id]);
+    if (id) {
+       joinMatch(id);
+    }
+  }, [id, socket, joinMatch]);
 
   useEffect(() => {
-    if (socket) {
-      socket.on('scoreUpdated', (data) => {
-        if (data.matchId === id) {
-          setScores(prev => prev.map(s => s.teamId === data.teamId ? { ...s, ...data } : s));
-        }
-      });
-      socket.on('inningsSwapped', () => fetchMatch());
-      socket.on('matchCompleted', (data) => {
-        setMatchResult(data?.resultMessage || "Match Completed");
-        // Update the match object with win info immediately
-        setMatch(prev => ({ ...prev, status: 'completed', winnerId: data.winnerId, resultMessage: data.resultMessage }));
-        setShowCelebration(true);
-      });
-    }
-    return () => {
-      if (socket) {
-        socket.off('scoreUpdated');
-        socket.off('inningsSwapped');
-        socket.off('matchCompleted');
+    if (!socket) return;
+    socket.on('scoreUpdated', (data) => {
+      if (data.matchId?.toString() === id?.toString()) {
+        setScores(prev => prev.map(s => s.teamId?.toString() === data.teamId?.toString() ? { ...s, ...data } : s));
       }
+    });
+    socket.on('inningsSwapped', (data) => {
+      if (data.matchId?.toString() === id?.toString()) {
+        setMatch(prev => prev ? { 
+            ...prev, 
+            currentInnings: data.innings, 
+            battingTeamId: data.newBattingTeamId 
+        } : prev);
+        setActiveTeamId(data.newBattingTeamId?.toString());
+      }
+    });
+    socket.on('matchStarted', (data) => {
+      if (data.matchId?.toString() === id?.toString()) {
+        setMatch(prev => prev ? { ...prev, status: 'live' } : prev);
+      }
+    });
+    socket.on('matchCompleted', (data) => {
+      if (data.matchId?.toString() === id?.toString()) {
+        setMatchResult(data?.resultMessage || "Match Completed");
+        setMatch(prev => prev ? { 
+            ...prev, 
+            status: 'completed', 
+            winnerId: data.winnerId, 
+            resultMessage: data.resultMessage 
+        } : prev);
+        setShowCelebration(true);
+      }
+    });
+    return () => {
+      socket.off('scoreUpdated');
+      socket.off('inningsSwapped');
+      socket.off('matchCompleted');
+      socket.off('matchStarted');
     };
   }, [socket, id]);
 

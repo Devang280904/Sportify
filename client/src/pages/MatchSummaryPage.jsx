@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
+import { useSocket } from '../context/SocketContext';
 import { MdSportsCricket, MdHistory, MdEmojiEvents } from 'react-icons/md';
 import { HiOutlineUserGroup, HiOutlineCalendar, HiOutlineLocationMarker } from 'react-icons/hi';
 
@@ -62,6 +63,7 @@ const processInningsBalls = (balls) => {
 
 const MatchSummaryPage = () => {
   const { id } = useParams();
+  const { socket, joinMatch, leaveMatch } = useSocket();
   const [match, setMatch] = useState(null);
   const [scores, setScores] = useState([]);
   const [team1Players, setTeam1Players] = useState([]);
@@ -70,7 +72,46 @@ const MatchSummaryPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchSummary = async () => {
+    fetchSummary();
+    if (id) {
+       joinMatch(id);
+    }
+    return () => {
+       if (id) leaveMatch(id);
+    };
+  }, [id, socket, joinMatch, leaveMatch]);
+
+  useEffect(() => {
+    if (!socket) return;
+    socket.on('scoreUpdated', (data) => {
+      if (data.matchId === id) {
+        setScores(prev => prev.map(s => s.teamId === data.teamId ? { ...s, ...data } : s));
+      }
+    });
+    socket.on('matchCompleted', (data) => {
+      if (data.matchId === id) {
+        setMatch(prev => prev ? { ...prev, status: 'completed', winnerId: data.winnerId, resultMessage: data.resultMessage } : prev);
+      }
+    });
+    socket.on('inningsSwapped', (data) => {
+      if (data.matchId === id) {
+        setMatch(prev => prev ? { ...prev, currentInnings: data.innings, battingTeamId: data.newBattingTeamId } : prev);
+      }
+    });
+    socket.on('matchStarted', (data) => {
+      if (data.matchId === id) {
+        setMatch(prev => prev ? { ...prev, status: 'live' } : prev);
+      }
+    });
+    return () => {
+      socket.off('scoreUpdated');
+      socket.off('matchCompleted');
+      socket.off('inningsSwapped');
+      socket.off('matchStarted');
+    };
+  }, [socket, id]);
+
+  const fetchSummary = async () => {
       try {
         const res = await api.get(`/matches/${id}/summary`);
         const matchData = res.data.data.match;
@@ -90,9 +131,6 @@ const MatchSummaryPage = () => {
         setLoading(false);
       }
     };
-    fetchSummary();
-  }, [id]);
-
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-primary"><div className="animate-spin rounded-full h-12 w-12 border-4 border-accent border-t-transparent"></div></div>;
   if (!match) return <div className="card text-center py-12"><p className="text-txt-muted">Match summary not found</p></div>;
 
@@ -103,7 +141,7 @@ const MatchSummaryPage = () => {
       {/* Professional Match Header: Dark Theme */}
       <div className="bg-primary-dark text-white rounded-t-xl overflow-hidden relative border border-white/10 shadow-2xl">
         <div className="absolute top-0 right-0 p-4">
-          <span className="badge bg-white/10 text-white uppercase text-[10px] tracking-widest">Completed</span>
+          <span className={`badge ${match.status === 'live' ? 'bg-accent/20 text-accent' : 'bg-white/10 text-white'} uppercase text-[10px] tracking-widest`}>{match.status}</span>
         </div>
 
         <div className="p-6 md:p-8">

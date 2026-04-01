@@ -28,6 +28,7 @@ const buildScoreBroadcastPayload = (matchId, teamId, scoreRecord, extra = {}) =>
   currentBowlerId: scoreRecord.currentBowlerId,
   batting: scoreRecord.batting,
   bowling: scoreRecord.bowling,
+  ballByBall: scoreRecord.ballByBall,
   ...extra,
 });
 

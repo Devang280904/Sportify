@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 
 const SocketContext = createContext(null);
@@ -9,8 +9,8 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    // Connect directly to backend, not through Vite proxy
-    const socketUrl = import.meta.env.DEV ? 'http://localhost:5000' : window.location.origin;
+    // Use relative path to let Vite proxy handle the connection to the correct port (5001)
+    const socketUrl = ''; 
     
     const newSocket = io(socketUrl, {
       transports: ['websocket', 'polling'],
@@ -35,13 +35,19 @@ export const SocketProvider = ({ children }) => {
     };
   }, []);
 
-  const joinMatch = (matchId) => {
-    if (socket) socket.emit('joinMatch', matchId);
-  };
+  const joinMatch = useCallback((matchId) => {
+    if (socket) {
+      socket.emit('joinMatch', matchId);
+      console.log('Emitted joinMatch for:', matchId);
+    }
+  }, [socket]);
 
-  const leaveMatch = (matchId) => {
-    if (socket) socket.emit('leaveMatch', matchId);
-  };
+  const leaveMatch = useCallback((matchId) => {
+    if (socket) {
+      socket.emit('leaveMatch', matchId);
+      console.log('Emitted leaveMatch for:', matchId);
+    }
+  }, [socket]);
 
   return (
     <SocketContext.Provider value={{ socket, joinMatch, leaveMatch }}>

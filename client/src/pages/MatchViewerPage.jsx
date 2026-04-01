@@ -76,9 +76,13 @@ const MatchViewerPage = () => {
 
   useEffect(() => {
     fetchMatch();
-    joinMatch(id);
-    return () => leaveMatch(id);
-  }, [id]);
+    if (id) {
+      joinMatch(id);
+    }
+    return () => {
+      if (id) leaveMatch(id);
+    };
+  }, [id, socket, joinMatch, leaveMatch]);
 
   useEffect(() => {
     if (!socket) return;
@@ -93,9 +97,25 @@ const MatchViewerPage = () => {
         setShowCelebration(true);
       }
     });
+    socket.on('inningsSwapped', (data) => {
+      if (data.matchId === id) {
+        setMatch(prev => prev ? { 
+          ...prev, 
+          battingTeamId: data.newBattingTeamId, 
+          currentInnings: data.innings 
+        } : prev);
+      }
+    });
+    socket.on('matchStarted', (data) => {
+      if (data.matchId === id) {
+        setMatch(prev => prev ? { ...prev, status: 'live' } : prev);
+      }
+    });
     return () => {
       socket.off('scoreUpdated');
       socket.off('matchCompleted');
+      socket.off('inningsSwapped');
+      socket.off('matchStarted');
     };
   }, [socket, id]);
 

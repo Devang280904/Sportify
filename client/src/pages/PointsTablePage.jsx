@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { HiOutlineChartBar } from 'react-icons/hi';
 
 const PointsTablePage = () => {
+  const navigate = useNavigate();
   const [tournaments, setTournaments] = useState([]);
   const [selectedTournament, setSelectedTournament] = useState('');
   const [pointsTable, setPointsTable] = useState([]);
@@ -61,7 +63,10 @@ const PointsTablePage = () => {
               </thead>
               <tbody>
                 {pointsTable.map((team, idx) => (
-                  <tr key={team.teamId} className={`border-b border-surface-border hover:bg-surface transition-colors
+                  <tr 
+                    key={team.teamId} 
+                    onClick={() => navigate(`/teams/${team.teamId}`)}
+                    className={`border-b border-surface-border hover:bg-surface transition-colors cursor-pointer
                     ${idx === 0 ? 'bg-accent/5' : ''} ${idx < 2 ? 'border-l-4 border-l-accent' : ''}`}>
                     <td className="px-6 py-4 font-bold text-txt-primary">{idx + 1}</td>
                     <td className="px-6 py-4">

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useSocket } from '../context/SocketContext';
 import LiveIndicator from '../components/LiveIndicator';
 import { HiOutlineCalendar, HiOutlineSun, HiOutlineMoon } from 'react-icons/hi';
 
 const FixturesPage = () => {
+  const navigate = useNavigate();
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -124,7 +125,9 @@ const FixturesPage = () => {
                       {/* Teams row */}
                       <div className="flex items-center justify-between">
                         {/* Team 1 */}
-                        <div className="flex items-center gap-x-3 sm:gap-x-4 flex-1">
+                        <div 
+                          onClick={(e) => { e.stopPropagation(); navigate(`/teams/${match.team1Id._id}`); }}
+                          className="flex items-center gap-x-3 sm:gap-x-4 flex-1 cursor-pointer hover:opacity-80 transition-opacity">
                           {match.team1Id?.logoURL ? (
                             <img src={match.team1Id.logoURL} alt={match.team1Id.teamName} className="w-10 h-10 sm:w-12 sm:h-12 object-contain bg-white rounded-full p-1 border border-surface-border shadow-sm shrink-0" />
                           ) : (
@@ -162,7 +165,9 @@ const FixturesPage = () => {
                         )}
 
                         {/* Team 2 */}
-                        <div className="flex items-center gap-x-3 sm:gap-x-4 flex-1 justify-end">
+                        <div 
+                          onClick={(e) => { e.stopPropagation(); navigate(`/teams/${match.team2Id._id}`); }}
+                          className="flex items-center gap-x-3 sm:gap-x-4 flex-1 justify-end cursor-pointer hover:opacity-80 transition-opacity">
                           <span className="font-bold text-txt-primary hidden sm:block truncate pl-2 text-right">{match.team2Id?.teamName}</span>
                           <span className="font-bold text-[13px] text-txt-primary sm:hidden truncate text-right">{match.team2Id?.teamName?.substring(0, 3).toUpperCase()}</span>
                           

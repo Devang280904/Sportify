@@ -296,7 +296,9 @@ const LiveScoringPage = () => {
           <div className="flex flex-col md:flex-row items-center justify-between gap-8 md:gap-12 w-full max-w-3xl mx-auto">
             
             {/* Team 1 Profile */}
-            <div className={`flex flex-col items-center gap-3 w-24 shrink-0 ${activeTeamId?.toString() === (match?.team1Id?._id || match?.team1Id).toString() ? 'opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'opacity-60 grayscale-[30%]'}`}>
+            <div 
+              onClick={() => navigate(`/teams/${match.team1Id._id}`)}
+              className={`flex flex-col items-center gap-3 w-24 shrink-0 cursor-pointer hover:opacity-100 transition-opacity ${activeTeamId?.toString() === (match?.team1Id?._id || match?.team1Id).toString() ? 'opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'opacity-60 grayscale-[30%]'}`}>
               {match.team1Id?.logoURL ? (
                 <img src={match.team1Id.logoURL} alt={match.team1Id.teamName} className="w-16 h-16 object-contain" />
               ) : (
@@ -337,7 +339,9 @@ const LiveScoringPage = () => {
             </div>
 
             {/* Team 2 Profile */}
-            <div className={`flex flex-col items-center gap-3 w-24 shrink-0 ${activeTeamId?.toString() === (match?.team2Id?._id || match?.team2Id).toString() ? 'opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'opacity-60 grayscale-[30%]'}`}>
+            <div 
+              onClick={() => navigate(`/teams/${match.team2Id._id}`)}
+              className={`flex flex-col items-center gap-3 w-24 shrink-0 cursor-pointer hover:opacity-100 transition-opacity ${activeTeamId?.toString() === (match?.team2Id?._id || match?.team2Id).toString() ? 'opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'opacity-60 grayscale-[30%]'}`}>
               {match.team2Id?.logoURL ? (
                 <img src={match.team2Id.logoURL} alt={match.team2Id.teamName} className="w-16 h-16 object-contain" />
               ) : (

@@ -45,7 +45,7 @@ const MatchSummaryPage = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20">
       {/* Professional Match Header: Dark Theme */}
-      <div className="bg-[#1a1a1b] text-white rounded-t-xl overflow-hidden relative border border-[#2d2d2d] shadow-2xl">
+      <div className="bg-primary-dark text-white rounded-t-xl overflow-hidden relative border border-white/10 shadow-2xl">
         <div className="absolute top-0 right-0 p-4">
            <span className="badge bg-white/10 text-white uppercase text-[10px] tracking-widest">Completed</span>
         </div>

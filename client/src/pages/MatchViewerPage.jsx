@@ -3,8 +3,65 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
 import { useSocket } from '../context/SocketContext';
 import LiveIndicator from '../components/LiveIndicator';
-import { MdSportsCricket, MdLocationOn as HiOutlineLocationMarker, MdCalendarToday as HiOutlineCalendar } from 'react-icons/md';
+import { MdSportsCricket, MdOutlineSportsBaseball, MdEmojiEvents } from 'react-icons/md';
+import { HiOutlineUserGroup, HiOutlineCalendar, HiOutlineLocationMarker } from 'react-icons/hi';
 import VictoryOverlay from '../components/VictoryOverlay';
+
+const processInningsBalls = (balls) => {
+  let currentOver = 0;
+  let legalBallsInOver = 0;
+  
+  let overs = [];
+  let currentOverBalls = [];
+  
+  balls.forEach((ball) => {
+      const isExtra = ball.type === 'wide' || ball.type === 'no-ball';
+      
+      let displayLabel;
+      if (ball.type === 'wicket') displayLabel = 'W';
+      else if (ball.type === 'wide') displayLabel = `${ball.runs || 1}wd`;
+      else if (ball.type === 'no-ball') displayLabel = `${ball.runs || 1}nb`;
+      else displayLabel = ball.runs.toString();
+      
+      let deliveryNotation = `${currentOver}.${legalBallsInOver + (isExtra ? 0 : 1)}`;
+      if (isExtra && legalBallsInOver === 6) {
+         deliveryNotation = `${currentOver}.6`;
+      }
+
+      currentOverBalls.push({
+         ...ball,
+         displayLabel,
+         deliveryNotation
+      });
+      
+      if (!isExtra) {
+          legalBallsInOver++;
+      }
+      
+      if (legalBallsInOver === 6) {
+          let overRuns = currentOverBalls.reduce((acc, b) => acc + (Number(b.runs) || 0), 0);
+          overs.push({
+              overNumber: currentOver + 1,
+              balls: currentOverBalls,
+              runs: overRuns
+          });
+          currentOver++;
+          legalBallsInOver = 0;
+          currentOverBalls = [];
+      }
+  });
+  
+  if (currentOverBalls.length > 0) {
+      let overRuns = currentOverBalls.reduce((acc, b) => acc + (Number(b.runs) || 0), 0);
+      overs.push({
+          overNumber: currentOver + 1,
+          balls: currentOverBalls,
+          runs: overRuns
+      });
+  }
+  
+  return overs;
+};
 
 const MatchViewerPage = () => {
   const { id } = useParams();
@@ -232,19 +289,62 @@ const MatchViewerPage = () => {
            {/* Timeline - Show for both live and completed */}
            {scores.find(s => s.ballByBall?.length > 0) && (
               <div className="card p-6 shadow-xl border-none">
-                <h3 className="text-xs font-black text-txt-primary mb-6 uppercase tracking-widest border-b border-surface-border pb-4">Recent Timeline</h3>
-                <div className="flex flex-wrap gap-2">
-                    {[...(scores.find(s => s.teamId === match.battingTeamId)?.ballByBall || scores[0]?.ballByBall || [])].reverse().slice(0, 24).map((ball, i) => (
-                      <div key={i} className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs border-2 transition-all hover:scale-110 cursor-default ${
-                        ball.type === 'wicket' ? 'bg-red-600 text-white border-red-700 shadow-lg shadow-red-200' :
-                        ball.runs === 4 ? 'bg-accent/20 text-accent border-accent/30' :
-                        ball.runs === 6 ? 'bg-accent text-white border-accent shadow-lg shadow-accent/20' :
-                        'bg-surface-alt text-txt-primary border-surface-border'
-                      }`}>
-                        {ball.type === 'wicket' ? 'W' : ball.runs}
-                      </div>
-                    ))}
-                </div>
+                 <h3 className="text-xs font-black text-txt-primary mb-6 uppercase tracking-widest border-b border-surface-border pb-4">Match Timeline (Ball by Ball)</h3>
+                 
+                 {scores.map((score, sIdx) => {
+                     const team = score.teamId?.toString() === (match?.team1Id?._id || match?.team1Id).toString() ? match.team1Id : match.team2Id;
+                     const overs = processInningsBalls(score.ballByBall || []);
+                     
+                     if (overs.length === 0) return null;
+
+                     return (
+                         <div key={sIdx} className="mb-10 last:mb-0">
+                            <h4 className="text-[11px] font-black text-txt-secondary mb-4 uppercase tracking-widest flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-primary inline-block"></span>
+                                {team?.teamName || 'Unknown Team'} Innings
+                            </h4>
+                            
+                            <div className="flex flex-nowrap overflow-x-auto pb-6 gap-0 items-center custom-scrollbar">
+                               {overs.map((overData, oIdx) => (
+                                   <div key={oIdx} className="flex items-center shrink-0 relative pr-4 md:pr-6">
+                                      {/* Over Wrapper */}
+                                      <div className="flex gap-2 items-center">
+                                          {overData.balls.map((ball, bIdx) => (
+                                              <div key={bIdx} className="flex flex-col items-center gap-1.5 min-w-[32px]">
+                                                  <span className="text-[9px] font-bold text-txt-muted tracking-tighter">
+                                                      {ball.deliveryNotation}
+                                                  </span>
+                                                  <div className={`w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 rounded-full flex items-center justify-center font-black text-[10px] sm:text-xs border-2 transition-transform hover:-translate-y-1 hover:shadow-lg cursor-default ${
+                                                      ball.type === 'wicket' ? 'bg-danger text-white border-danger-dark shadow-md shadow-danger/20' :
+                                                      ball.type === 'wide' || ball.type === 'no-ball' ? 'bg-warning/20 text-warning-dark border-warning/30' :
+                                                      ball.runs === 4 ? 'bg-accent/20 text-accent border-accent/30' :
+                                                      ball.runs === 6 ? 'bg-accent text-white border-accent shadow-md shadow-accent/20' :
+                                                      'bg-surface-alt text-txt-primary border-surface-border'
+                                                  }`}>
+                                                      {ball.displayLabel}
+                                                  </div>
+                                              </div>
+                                          ))}
+                                      </div>
+                                      
+                                      {/* Over Separator & Summary */}
+                                      <div className="flex flex-col items-center justify-center ml-4 md:ml-6 relative h-16 w-16 shrink-0 group">
+                                         <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 border-l-2 border-dashed border-surface-border/80 group-hover:border-primary/40 transition-colors"></div>
+                                         <div className="bg-surface-card border border-surface-border px-2 py-1.5 rounded-lg shadow-sm z-10 text-center min-w-[50px] group-hover:border-primary/30 transition-colors">
+                                             <span className="block text-[8px] font-black text-txt-muted uppercase tracking-widest leading-none mb-1">OV {overData.overNumber}</span>
+                                             <span className="block text-[11px] font-black text-primary leading-none">{overData.runs} Runs</span>
+                                         </div>
+                                      </div>
+                                   </div>
+                               ))}
+                            </div>
+                         </div>
+                     );
+                 })}
+                 
+                 {scores.every(s => !s.ballByBall || s.ballByBall.length === 0) && (
+                    <div className="text-center text-txt-muted italic text-sm py-8 bg-surface/50 rounded-xl border border-dashed border-surface-border">No timeline data available yet.</div>
+                 )}
               </div>
            )}
         </div>

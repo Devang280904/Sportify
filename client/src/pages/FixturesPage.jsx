@@ -79,6 +79,9 @@ const FixturesPage = () => {
               const isDay = hour >= 6 && hour < 18;
               const timeString = matchDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
+              const team1Score = match.scores?.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id)?.toString());
+              const team2Score = match.scores?.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id)?.toString());
+
               return (
                 <div key={match._id} className="relative flex flex-col md:flex-row gap-4 md:items-stretch group animate-slide-up">
                   {/* Left Side: Timeline & Dates */}
@@ -133,10 +136,30 @@ const FixturesPage = () => {
                           <span className="font-bold text-[13px] text-txt-primary sm:hidden truncate">{match.team1Id?.teamName?.substring(0, 3).toUpperCase()}</span>
                         </div>
 
-                        {/* VS */}
-                        <div className="font-black italic text-surface-border text-xl sm:text-2xl px-2 sm:px-4 opacity-50 select-none">
-                          V/S
-                        </div>
+                        {/* Center Area: Scores or VS */}
+                        {match.status === 'scheduled' || !match.scores || match.scores.length === 0 ? (
+                          <div className="font-black italic text-surface-border text-xl sm:text-2xl px-2 sm:px-4 opacity-50 select-none">
+                            V/S
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center px-1 sm:px-4 shrink-0">
+                            <div className="flex items-center gap-3 sm:gap-6">
+                              <div className="text-center">
+                                <div className="font-black text-xl sm:text-3xl tracking-tight text-txt-primary">
+                                  {team1Score?.runs || 0}<span className="text-lg sm:text-2xl text-txt-muted/70">/{team1Score?.wickets || 0}</span>
+                                </div>
+                                <div className="text-[9px] sm:text-[10px] text-txt-muted font-bold tracking-widest mt-0.5">({team1Score?.overs || 0} OV)</div>
+                              </div>
+                              <div className="font-black italic text-surface-border/40 text-sm sm:text-lg select-none">-</div>
+                              <div className="text-center">
+                                <div className="font-black text-xl sm:text-3xl tracking-tight text-txt-primary">
+                                  {team2Score?.runs || 0}<span className="text-lg sm:text-2xl text-txt-muted/70">/{team2Score?.wickets || 0}</span>
+                                </div>
+                                <div className="text-[9px] sm:text-[10px] text-txt-muted font-bold tracking-widest mt-0.5">({team2Score?.overs || 0} OV)</div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Team 2 */}
                         <div className="flex items-center gap-x-3 sm:gap-x-4 flex-1 justify-end">
@@ -152,6 +175,13 @@ const FixturesPage = () => {
                           )}
                         </div>
                       </div>
+
+                      {/* Result summary */}
+                      {match.resultMessage && (
+                        <div className="mt-5 pt-3 border-t border-surface-border/30 text-center">
+                          <span className="text-[11px] font-black uppercase tracking-widest text-[#00cfa7]">{match.resultMessage}</span>
+                        </div>
+                      )}
                     </Link>
                   </div>
                 </div>

@@ -51,7 +51,7 @@ exports.getTeam = async (req, res) => {
       .populate('createdBy', 'name email')
       .populate({
         path: 'tournamentIds',
-        select: 'name organizerId',
+        select: 'name organizerId playersPerTeam',
         populate: {
           path: 'organizerId',
           select: 'name email'
@@ -80,7 +80,7 @@ exports.getTeams = async (req, res) => {
       .populate('createdBy', 'name email')
       .populate({
         path: 'tournamentIds',
-        select: 'name organizerId',
+        select: 'name organizerId playersPerTeam',
         populate: {
           path: 'organizerId',
           select: 'name email'
@@ -114,7 +114,7 @@ exports.getMyTeams = async (req, res) => {
       .populate('createdBy', 'name email')
       .populate({
         path: 'tournamentIds',
-        select: 'name organizerId',
+        select: 'name organizerId playersPerTeam',
         populate: {
           path: 'organizerId',
           select: 'name email'
@@ -209,8 +209,12 @@ exports.addPlayer = async (req, res) => {
       return res.status(403).json({ success: false, message: 'No permission' });
     }
 
-    if (team.players.length >= 11) {
-      return res.status(400).json({ success: false, message: 'Team already has 11 players' });
+    const maxPlayers = team.tournamentIds?.length > 0
+      ? Math.max(...team.tournamentIds.map(t => t.playersPerTeam || 11))
+      : 11;
+
+    if (team.players.length >= maxPlayers) {
+      return res.status(400).json({ success: false, message: `Team already has the maximum allowed ${maxPlayers} players` });
     }
 
     const { name, role, battingStyle, bowlingStyle } = req.body;
@@ -367,8 +371,12 @@ exports.uploadPlayers = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid player data' });
     }
 
-    if (team.players.length + players.length > 11) {
-      return res.status(400).json({ success: false, message: `Uploading ${players.length} players would exceed the 11-player limit (Current: ${team.players.length})` });
+    const maxPlayers = team.tournamentIds?.length > 0
+      ? Math.max(...team.tournamentIds.map(t => t.playersPerTeam || 11))
+      : 11;
+
+    if (team.players.length + players.length > maxPlayers) {
+      return res.status(400).json({ success: false, message: `Uploading ${players.length} players would exceed the ${maxPlayers}-player limit (Current: ${team.players.length})` });
     }
 
     const newPlayers = [];

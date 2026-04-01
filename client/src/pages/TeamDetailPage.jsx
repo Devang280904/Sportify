@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { HiOutlineTrash, HiOutlineDownload, HiOutlineUpload, HiOutlineUserAdd, HiOutlineX } from 'react-icons/hi';
+import { HiOutlineTrash, HiOutlineDownload, HiOutlineUpload, HiOutlineUserAdd, HiOutlineX, HiOutlineInformationCircle } from 'react-icons/hi';
 
 const TeamDetailPage = () => {
   const { id } = useParams();
@@ -10,7 +10,9 @@ const TeamDetailPage = () => {
   const [team, setTeam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showTournamentInfo, setShowTournamentInfo] = useState(false);
   
+
   // Manual Player Add States
   const [showManualForm, setShowManualForm] = useState(false);
   const [playerForm, setPlayerForm] = useState({
@@ -45,7 +47,9 @@ const TeamDetailPage = () => {
 
   const handleAddManualPlayer = async (e) => {
     e.preventDefault();
-    if (team.players.length >= 11) return alert('Team already has 11 players');
+    const currentMaxPlayers = team?.tournamentIds?.length > 0 ? Math.max(...team.tournamentIds.map(t => t.playersPerTeam || 11)) : 11;
+    if (team.players.length >= currentMaxPlayers) return alert(`Team already has the maximum ${currentMaxPlayers} players`);
+
     
     setSaving(true);
     try {
@@ -151,21 +155,67 @@ const TeamDetailPage = () => {
   );
   const canEdit = isTeamOwner || isTournamentOrganizer;
 
+  const maxPlayers = team.tournamentIds?.length > 0 
+    ? Math.max(...team.tournamentIds.map(t => t.playersPerTeam || 11)) 
+    : 11;
+
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="card bg-gradient-to-r from-surface-card to-primary/5">
-        <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-            {team.teamName?.charAt(0)}
+      <div className="card bg-gradient-to-r from-surface-card to-primary/5 relative">
+        <div className="flex items-start sm:items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+              {team.teamName?.charAt(0)}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-txt-primary">{team.teamName}</h1>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`px-2 py-0.5 rounded text-[11px] uppercase tracking-widest font-bold border ${team.players?.length >= maxPlayers ? 'bg-accent/10 border-accent/20 text-accent' : 'bg-surface-border border-surface-border text-txt-muted'}`}>
+                  {team.players?.length || 0}/{maxPlayers} players
+                </span>
+                {team.tournamentIds?.length > 0 && (
+                  <span className="bg-primary/5 text-primary text-[11px] px-2 py-0.5 rounded border border-primary/10 max-w-[140px] truncate sm:max-w-none">
+                    {team.tournamentIds[0].name}
+                    {team.tournamentIds.length > 1 && ` (+${team.tournamentIds.length - 1})`}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-txt-primary">{team.teamName}</h1>
-            <p className="text-txt-secondary text-sm">
-              {team.tournamentIds?.length > 0 
-                ? team.tournamentIds.map(t => t.name).join(', ') 
-                : 'No tournament'} • <span className={team.players?.length >= 11 ? 'text-accent font-bold' : 'text-txt-muted'}>{team.players?.length || 0}/11 players</span>
-            </p>
+          
+          {/* Info Button for Tournaments */}
+          <div className="relative">
+            <button 
+              onClick={() => setShowTournamentInfo(!showTournamentInfo)}
+              onBlur={() => setTimeout(() => setShowTournamentInfo(false), 200)}
+              className="p-2.5 bg-white rounded-full border border-surface-border text-primary hover:bg-primary/5 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 group"
+              title="View Enrolled Tournaments"
+            >
+              <HiOutlineInformationCircle className="text-2xl group-hover:scale-110 transition-transform" />
+            </button>
+            
+            {/* Popover */}
+            {showTournamentInfo && (
+              <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-2xl border border-surface-border p-4 z-50 animate-slide-up origin-top-right">
+                <h4 className="font-bold text-sm text-txt-primary mb-3 border-b border-surface-border pb-2">Enrolled Tournaments</h4>
+                {team.tournamentIds?.length > 0 ? (
+                  <ul className="space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-1">
+                    {team.tournamentIds.map(t => (
+                      <li key={t._id} className="text-sm text-txt-secondary flex items-start hover:text-primary transition-colors">
+                        <span className="text-primary mr-2 text-lg leading-none mt-0.5">•</span> 
+                        <span className="font-medium">{t.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-txt-muted italic flex items-center gap-2 bg-surface/50 p-2 rounded-lg">
+                    <HiOutlineInformationCircle /> Not currently enrolled in any tournament.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -175,7 +225,7 @@ const TeamDetailPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <h2 className="text-lg font-bold text-txt-primary">Squad Management {!canEdit && <span className="text-xs text-txt-muted font-normal ml-2">(View Only)</span>}</h2>
           <div className="flex items-center gap-2">
-            {canEdit && user && team.players.length < 11 && (
+            {canEdit && user && team.players.length < maxPlayers && (
               <button 
                 onClick={() => setShowManualForm(!showManualForm)}
                 className={`btn-primary flex items-center space-x-2 text-sm transition-all ${showManualForm ? 'bg-danger hover:bg-danger-dark focus:ring-danger' : ''}`}
@@ -190,7 +240,7 @@ const TeamDetailPage = () => {
                 <HiOutlineDownload /> <span>Download Template (CSV)</span>
               </button>
             </div>
-            {canEdit && user && team.players.length < 11 && (
+            {canEdit && user && team.players.length < maxPlayers && (
               <label className="btn-secondary inline-flex items-center space-x-2 text-sm py-2 cursor-pointer transition-all hover:shadow-lg">
                 <HiOutlineUpload /> <span>CSV Upload</span>
                 <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />

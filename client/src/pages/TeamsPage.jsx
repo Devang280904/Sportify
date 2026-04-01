@@ -148,35 +148,73 @@ const TeamsPage = () => {
         return filteredTeams.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in">
             {filteredTeams.map(team => (
-              <div key={team._id} className="card hover:shadow-card-lg transition-all group animate-slide-up relative">
+              <div key={team._id} className="card hover:shadow-card-lg transition-all group animate-slide-up relative p-5 sm:p-6 border border-surface-border hover:border-primary/20 flex flex-col justify-between">
                 <Link to={`/teams/${team._id}`} className="block">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xl font-bold">
-                      {team.teamName?.charAt(0)}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-txt-primary group-hover:text-primary transition-colors pr-8">
-                        {team.teamName}
-                      </h3>
-                      <p className="text-sm text-txt-secondary">
-                        {team.tournamentIds?.[0]?.name || 'Global Team'}
-                        {team.tournamentIds?.length > 1 && ` (+${team.tournamentIds.length - 1} more)`}
-                      </p>
-                      <p className="text-xs text-txt-muted mt-1">{team.players?.length || 0}/11 players</p>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-4">
+                      {team.logoURL ? (
+                        <div className="w-14 h-14 rounded-full bg-surface-alt border border-surface-border overflow-hidden p-1 shadow-sm shrink-0">
+                          <img src={team.logoURL} alt={team.teamName} className="w-full h-full object-contain rounded-full" />
+                        </div>
+                      ) : (
+                        <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-black border border-primary/20 shadow-inner shrink-0">
+                          {team.teamName?.charAt(0)}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0 pr-8">
+                        <h3 className="text-lg font-bold text-txt-primary truncate group-hover:text-primary transition-colors">
+                          {team.teamName}
+                        </h3>
+                        <div className="mt-1 flex items-center font-medium">
+                          {team.tournamentIds?.[0]?.name ? (
+                            <span className="bg-primary/5 text-primary text-[11px] px-2 py-0.5 rounded border border-primary/10 truncate max-w-[140px] sm:max-w-[180px]">
+                              {team.tournamentIds[0].name}
+                            </span>
+                          ) : (
+                            <span className="bg-secondary/5 text-secondary text-[11px] px-2 py-0.5 rounded border border-secondary/10 uppercase tracking-widest font-bold">
+                              Global Team
+                            </span>
+                          )}
+                          {team.tournamentIds?.length > 1 && (
+                            <span className="text-txt-muted ml-2 text-[10px] font-bold">+{team.tournamentIds.length - 1}</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <div className="w-full bg-surface rounded-full h-2">
-                      <div className="bg-accent rounded-full h-2 transition-all"
-                        style={{ width: `${((team.players?.length || 0) / 11) * 100}%` }}></div>
+                  
+                  <div className="mt-6 flex items-center justify-between border-t border-surface-border/50 pt-4">
+                    <div className="flex items-center space-x-2">
+                       <div className="flex -space-x-2">
+                         {Array.from({ length: Math.min(team.players?.length || 0, 3) }).map((_, i) => (
+                           <div key={i} className="w-7 h-7 rounded-full bg-surface-alt border-2 border-white flex items-center justify-center shadow-sm">
+                             <span className="text-[10px] text-txt-muted opacity-50 block leading-none">👤</span>
+                           </div>
+                         ))}
+                         {team.players?.length > 3 && (
+                           <div className="w-7 h-7 rounded-full bg-surface border-2 border-white flex items-center justify-center text-[9px] font-black text-txt-secondary shadow-sm">
+                             +{team.players.length - 3}
+                           </div>
+                         )}
+                         {(!team.players || team.players.length === 0) && (
+                           <div className="w-7 h-7 rounded-full bg-surface border-2 border-white border-dashed flex items-center justify-center shadow-sm"></div>
+                         )}
+                       </div>
+                       <span className="text-[11px] font-bold text-txt-muted uppercase tracking-widest pl-1">
+                         {team.players?.length || 0} Player{(team.players?.length !== 1) ? 's' : ''}
+                       </span>
                     </div>
+                    
+                    <span className="text-[10px] uppercase font-black tracking-widest text-primary/70 group-hover:text-primary transition-colors">
+                      View Squad →
+                    </span>
                   </div>
                 </Link>
 
                 {canDelete(team) && (
                   <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowDeleteModal(team); }}
-                    className="absolute top-4 right-4 p-2 text-txt-muted hover:text-danger hover:bg-danger/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                    className="absolute top-4 right-4 p-2 bg-surface hover:bg-danger/10 text-txt-muted hover:text-danger shadow-sm border border-surface-border hover:border-danger/30 rounded-lg transition-all opacity-0 group-hover:opacity-100 z-10"
                     title="Delete Team"
                   >
                     <HiOutlineTrash className="text-lg" />

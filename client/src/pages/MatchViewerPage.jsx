@@ -84,7 +84,7 @@ const MatchViewerPage = () => {
       )}
 
       {/* Professional Match Header: Dark Theme */}
-      <div className="bg-[#1a1a1b] text-white rounded-t-xl overflow-hidden relative border border-[#2d2d2d] shadow-2xl">
+      <div className="bg-primary-dark text-white rounded-t-xl overflow-hidden relative border border-white/10 shadow-2xl">
         <div className="absolute top-0 right-0 p-4">
           {match.status === 'live' ? <LiveIndicator size="md" /> : <span className="badge bg-white/10 text-white uppercase text-[10px] tracking-widest">{match.status}</span>}
         </div>
@@ -181,11 +181,13 @@ const MatchViewerPage = () => {
       </div>
 
       {/* Unified Tabs */}
-      <div className="flex bg-surface-card rounded-xl p-1 shadow-md border border-surface-border">
+      <div className="flex bg-primary-dark/95 rounded-b-xl border border-t-0 border-white/10 shadow-sm overflow-hidden mb-6">
         {['live', 'scorecard', 'squads'].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-3 px-4 rounded-lg font-black text-xs uppercase tracking-widest transition-all ${
-              activeTab === tab ? 'bg-primary text-white shadow-lg' : 'text-txt-secondary hover:bg-primary/5'
+            className={`flex-1 py-4 px-4 text-[11px] md:text-xs font-black uppercase tracking-widest transition-all ${
+              activeTab === tab 
+                ? 'text-white border-b-[3px] border-white bg-white/5' 
+                : 'text-white/50 hover:text-white hover:bg-white/5 border-b-[3px] border-transparent'
             }`}>
             {tab}
           </button>

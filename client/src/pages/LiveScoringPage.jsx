@@ -255,7 +255,7 @@ const LiveScoringPage = () => {
       )}
 
       {/* Match Header Scoreboard: Professional Dark Theme */}
-      <div className="bg-[#1a1a1b] text-white rounded-t-xl overflow-hidden relative border border-[#2d2d2d] shadow-2xl">
+      <div className="bg-primary-dark text-white rounded-t-xl overflow-hidden relative border border-white/10 shadow-2xl">
         <div className="absolute top-0 right-0 p-4"><LiveIndicator size="md" /></div>
         
         <div className="p-6 md:p-8">
@@ -347,7 +347,7 @@ const LiveScoringPage = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-[#1a1a1b] rounded-b-xl border border-t-0 border-[#2d2d2d] shadow-sm overflow-hidden mb-6">
+      <div className="flex bg-primary-dark/95 rounded-b-xl border border-t-0 border-white/10 shadow-sm overflow-hidden mb-6">
         {['live', 'scorecard', 'squads'].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`flex-1 py-4 px-4 text-[11px] md:text-xs font-black uppercase tracking-widest transition-all ${

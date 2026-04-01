@@ -8,8 +8,12 @@ import { useState } from 'react';
 const ScoreCard = ({ match, scores, onDelete }) => {
   const { user } = useAuth();
   const [deleting, setDeleting] = useState(false);
-  const team1Score = scores?.find(s => s.teamId === match.team1Id?._id);
-  const team2Score = scores?.find(s => s.teamId === match.team2Id?._id);
+  
+  // Use scores from prop (if passed for real-time updates) or from the injected match.scores
+  const activeScores = scores && scores.length > 0 ? scores : (match.scores || []);
+  // Provide a safe fallback if scores somehow don't exist yet
+  const team1Score = activeScores?.find(s => s.teamId === match.team1Id?._id) || { runs: 0, wickets: 0, overs: 0 };
+  const team2Score = activeScores?.find(s => s.teamId === match.team2Id?._id) || { runs: 0, wickets: 0, overs: 0 };
 
   const statusColors = {
     live: 'border-accent',
@@ -48,10 +52,10 @@ const ScoreCard = ({ match, scores, onDelete }) => {
   return (
     <Link
       to={getMatchLink()}
-      className={`bg-[#1a1a1b] rounded-xl border border-[#2d2d2d] hover:border-white/20 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 block relative group overflow-hidden`}
+      className={`bg-primary-dark rounded-xl border border-white/10 hover:border-white/30 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 block relative group overflow-hidden`}
     >
       {/* Top Bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#2d2d2d] bg-white/[0.02]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5">
         <span className="text-[10px] text-white/50 uppercase font-black tracking-widest truncate max-w-[150px]">
           {match.tournamentId?.name || 'Local Series'}
         </span>
@@ -121,7 +125,7 @@ const ScoreCard = ({ match, scores, onDelete }) => {
       </div>
 
       {/* Footer / Results Info */}
-      <div className="px-4 py-3 border-t border-[#2d2d2d] bg-[#1a1a1b] mt-1 text-center flex flex-col items-center justify-center min-h-[48px]">
+      <div className="px-4 py-3 border-t border-white/10 bg-black/20 mt-1 text-center flex flex-col items-center justify-center min-h-[48px]">
          {match.status === 'completed' ? (
            <p className="text-accent text-[10px] font-black uppercase tracking-widest">{match.resultMessage || (match.winnerId ? 'Match Completed' : 'Match Ended')}</p>
          ) : match.status === 'live' ? (

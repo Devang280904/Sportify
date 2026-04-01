@@ -97,14 +97,27 @@ exports.getMatches = async (req, res) => {
       .populate('team2Id', 'teamName logoURL')
       .populate({ 
         path: 'tournamentId', 
-        select: 'name organizerId',
+        select: 'name organizerId playersPerTeam',
         populate: { path: 'organizerId', select: 'name' }
       })
       .populate('winnerId', 'teamName')
       .populate('createdBy', 'name')
       .sort({ matchDate: -1 });
 
-    res.json({ success: true, data: matches });
+    // Fetch score records efficiently for all found matches
+    const matchIds = matches.map(m => m._id);
+    const scoreRecords = await ScoreRecord.find({ matchId: { $in: matchIds } }).select('matchId teamId runs wickets overs');
+
+    // Attach scores to match data
+    const matchesWithScores = matches.map(match => {
+      const matchScores = scoreRecords.filter(s => s.matchId.toString() === match._id.toString());
+      return {
+        ...match.toObject(),
+        scores: matchScores
+      };
+    });
+
+    res.json({ success: true, data: matchesWithScores });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

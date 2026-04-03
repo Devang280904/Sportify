@@ -71,12 +71,6 @@ cd server
 npm install
 ```
 Create a `.env` file in the `server` directory and add the necessary environment variables:
-```env
-PORT=5000
-MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
-REDIS_URL=your_redis_url
-```
 
 Start the backend server in development mode:
 ```bash
@@ -96,20 +90,9 @@ npm run dev
 
 ---
 
-## 📸 Interface Preview
-*(Placeholders for your amazing UI screenshots! Consider dropping in images of your Live Scoring View, Teams Page, and Tournament Dashboards here.)*
-
-| Dashboard | Match Summary | Live Scoring |
-| :---: | :---: | :---: |
-| <img src="https://via.placeholder.com/400x250/1a202c/ffffff?text=Dashboard+Preview" alt="Dashboard" width="100%"/> | <img src="https://via.placeholder.com/400x250/1a202c/ffffff?text=Match+Summary" alt="Summary" width="100%"/> | <img src="https://via.placeholder.com/400x250/1a202c/ffffff?text=Live+Scoring" alt="Scoring" width="100%"/> |
-
----
-
 ## 🤝 Contributing
 Contributions, active issues, and targeted feature requests are welcome! Feel free to check the repository issues page to start contributing.
 
-## 📝 License
-This project is [MIT](LICENSE) licensed.
 
 <br />
 

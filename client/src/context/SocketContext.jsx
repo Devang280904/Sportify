@@ -11,7 +11,6 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     // Use relative path to let Vite proxy handle the connection to the correct port (5001)
     const socketUrl = ''; 
-    
     const newSocket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,

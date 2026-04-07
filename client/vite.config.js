@@ -14,6 +14,23 @@ export default defineConfig({
         target: 'http://127.0.0.1:5001',
         ws: true,
         changeOrigin: true,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            // Silencing common "noise" errors in the dev console
+            if (err.code === 'ECONNRESET' || err.code === 'EPIPE') {
+              return;
+            }
+            console.log('Proxy Error:', err.message);
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // console.log('Sending Request to the Target:', req.method, req.url);
+          });
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            // console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
+          });
+        },
+        timeout: 5000,
+        proxyTimeout: 5000,
       },
     },
     middlewareMode: false,

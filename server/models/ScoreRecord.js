@@ -70,6 +70,16 @@ const scoreRecordSchema = new mongoose.Schema({
     sixes: { type: Number, default: 0 },
     isOut: { type: Boolean, default: false },
     strikeRate: { type: Number, default: 0 },
+    dismissalType: {
+      type: String,
+      enum: [
+        'BOWLED', 'CAUGHT', 'LBW', 'RUN_OUT', 'STUMPED',
+        'HIT_WICKET', 'OBSTRUCTING_FIELD', 'HIT_BALL_TWICE',
+        'TIMED_OUT', 'RETIRED_OUT', 'RETIRED_HURT', 'MANKAD', null
+      ],
+      default: null,
+    },
+    dismissalDescription: { type: String, default: '' },
   }],
   // Per-bowler stats
   bowling: [{
@@ -104,6 +114,8 @@ const scoreRecordSchema = new mongoose.Schema({
       ref: 'Player',
     },
     description: String,
+    dismissalType: { type: String, default: null },
+    dismissalDescription: { type: String, default: '' },
     timestamp: {
       type: Date,
       default: Date.now,

@@ -135,7 +135,7 @@ exports.setBowler = async (req, res) => {
 // @route   POST /api/matches/:id/score
 exports.updateScore = async (req, res) => {
   try {
-    const { teamId, runs, type, description, strikerId, nonStrikerId, bowlerId } = req.body;
+    const { teamId, runs, type, description, strikerId, nonStrikerId, bowlerId, dismissalType, dismissalDescription } = req.body;
     const matchId = req.params.id;
 
     if (!teamId) {
@@ -215,6 +215,8 @@ exports.updateScore = async (req, res) => {
       bowlerName: bowler ? bowler.playerName : 'Unknown',
       batsmanId: currentStrikerId,
       bowlerId: currentBowlerId,
+      dismissalType: currentBallType === 'wicket' ? (dismissalType || null) : null,
+      dismissalDescription: currentBallType === 'wicket' ? (dismissalDescription || '') : '',
       timestamp: new Date(),
     };
 
@@ -227,7 +229,11 @@ exports.updateScore = async (req, res) => {
       striker.ballsFaced += 1;
       if (safeRuns === 4) striker.fours += 1;
       if (safeRuns === 6) striker.sixes += 1;
-      if (currentBallType === 'wicket') striker.isOut = true;
+      if (currentBallType === 'wicket') {
+        striker.isOut = true;
+        striker.dismissalType = dismissalType || null;
+        striker.dismissalDescription = dismissalDescription || '';
+      }
       striker.strikeRate = (striker.runs / striker.ballsFaced) * 100;
     }
 
@@ -406,7 +412,11 @@ exports.undoLastBall = async (req, res) => {
       striker.ballsFaced -= 1;
       if (lastBall.runs === 4) striker.fours -= 1;
       if (lastBall.runs === 6) striker.sixes -= 1;
-      if (lastBall.type === 'wicket') striker.isOut = false;
+      if (lastBall.type === 'wicket') {
+        striker.isOut = false;
+        striker.dismissalType = null;
+        striker.dismissalDescription = '';
+      }
       striker.strikeRate = striker.ballsFaced > 0 ? (striker.runs / striker.ballsFaced) * 100 : 0;
     }
 

@@ -8,6 +8,21 @@ import { HiOutlineRewind, HiOutlineSwitchHorizontal, HiOutlineChevronRight } fro
 import { MdSportsCricket, MdPersonAdd } from 'react-icons/md';
 import VictoryOverlay from '../components/VictoryOverlay';
 
+const DISMISSAL_TYPES = [
+  { value: 'BOWLED',            label: 'Bowled',                       icon: '🎯', desc: 'Ball hits the stumps', prefix: 'b' },
+  { value: 'CAUGHT',            label: 'Caught',                       icon: '🤲', desc: 'Fielder catches ball', prefix: 'c', needsFielder: true },
+  { value: 'LBW',               label: 'LBW',                          icon: '🦵', desc: 'Leg before wicket', prefix: 'lbw b' },
+  { value: 'RUN_OUT',           label: 'Run Out',                      icon: '🏃', desc: 'Failed to reach crease', prefix: 'run out', needsFielder: true },
+  { value: 'STUMPED',           label: 'Stumped',                      icon: '🧤', desc: 'Keeper removes bails', prefix: 'st', needsFielder: true },
+  { value: 'HIT_WICKET',        label: 'Hit Wicket',                   icon: '🏏', desc: 'Batsman hits own stumps', prefix: 'hit wicket b' },
+  { value: 'MANKAD',            label: 'Mankad (Non-Striker Run Out)',  icon: '⚡', desc: 'Non-striker backing up early', prefix: 'run out (mankad) b' },
+  { value: 'RETIRED_OUT',       label: 'Retired Out',                  icon: '🚶', desc: 'Leaves without permission' },
+  { value: 'RETIRED_HURT',      label: 'Retired Hurt (Not Out)',       icon: '🩹', desc: 'Leaves due to injury' },
+  { value: 'OBSTRUCTING_FIELD', label: 'Obstructing the Field',        icon: '🚫', desc: 'Deliberate obstruction' },
+  { value: 'HIT_BALL_TWICE',    label: 'Hit the Ball Twice',           icon: '❌', desc: 'Hits ball twice' },
+  { value: 'TIMED_OUT',         label: 'Timed Out',                    icon: '⏱️', desc: 'New batsman late' },
+];
+
 const LiveScoringPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -28,6 +43,11 @@ const LiveScoringPage = () => {
   const [showBatsmanModal, setShowBatsmanModal] = useState(false);
   const [showBowlerModal, setShowBowlerModal] = useState(false);
   const [selectingType, setSelectingType] = useState('striker'); // 'striker', 'nonStriker', 'bowler'
+
+  // Dismissal modal state
+  const [showDismissalModal, setShowDismissalModal] = useState(false);
+  const [selectedDismissalType, setSelectedDismissalType] = useState(null);
+  const [selectedFielderId, setSelectedFielderId] = useState(null);
 
   useEffect(() => {
     fetchMatch();
@@ -112,7 +132,7 @@ const LiveScoringPage = () => {
   const battingPlayers = activeTeamId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? team1Players : team2Players;
   const bowlingPlayers = activeTeamId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? team2Players : team1Players;
 
-  const updateScore = async (runs, type = 'normal', description = '') => {
+  const updateScore = async (runs, type = 'normal', description = '', dismissalType = null, dismissalDesc = '') => {
     if (!activeTeamId || updating) return;
     if (!activeScore?.strikerId || !activeScore?.currentBowlerId) {
       alert('Please select striker and bowler first');
@@ -126,6 +146,8 @@ const LiveScoringPage = () => {
         runs,
         type,
         description,
+        dismissalType: type === 'wicket' ? dismissalType : null,
+        dismissalDescription: type === 'wicket' ? dismissalDesc : '',
       });
       const newScore = res.data.data;
       setScores(prev => prev.map(s => s.teamId === activeTeamId ? newScore : s));
@@ -160,6 +182,53 @@ const LiveScoringPage = () => {
     } finally {
       setUpdating(false);
     }
+  };
+
+  // Called when user presses "Out" button — shows dismissal modal first
+  const handleWicketPress = () => {
+    if (!activeTeamId || updating) return;
+    if (!activeScore?.strikerId || !activeScore?.currentBowlerId) {
+      alert('Please select striker and bowler first');
+      return;
+    }
+    setSelectedDismissalType(null);
+    setSelectedFielderId(null);
+    setShowDismissalModal(true);
+  };
+
+  // Confirmed from dismissal modal
+  const confirmDismissal = () => {
+    if (!selectedDismissalType) {
+      alert('Please select a dismissal type');
+      return;
+    }
+
+    const typeConfig = DISMISSAL_TYPES.find(t => t.value === selectedDismissalType);
+    
+    // Purely auto-generate description based on selection
+    let autoDesc = '';
+    const fielder = bowlingPlayers.find(p => p._id === selectedFielderId);
+    const bowler = bowlingPlayers.find(p => p._id === activeScore?.currentBowlerId);
+    
+    if (selectedDismissalType === 'CAUGHT' && fielder && bowler) {
+      if (fielder._id.toString() === bowler._id.toString()) {
+        autoDesc = `c & b ${bowler.name}`;
+      } else {
+        autoDesc = `${typeConfig.prefix} ${fielder.name} b ${bowler.name}`;
+      }
+    } else if (selectedDismissalType === 'STUMPED' && fielder && bowler) {
+      autoDesc = `${typeConfig.prefix} ${fielder.name} b ${bowler.name}`;
+    } else if (['BOWLED', 'LBW', 'HIT_WICKET', 'MANKAD'].includes(selectedDismissalType) && bowler) {
+      autoDesc = `${typeConfig.prefix} ${bowler.name}`;
+    } else if (selectedDismissalType === 'RUN_OUT' && fielder) {
+      autoDesc = `${typeConfig.prefix} (${fielder.name})`;
+    } else {
+      autoDesc = typeConfig.label;
+    }
+
+    setShowDismissalModal(false);
+    const isRetiredHurt = selectedDismissalType === 'RETIRED_HURT';
+    updateScore(0, isRetiredHurt ? 'normal' : 'wicket', '', selectedDismissalType, autoDesc);
   };
 
   const setBatsman = async (playerId, type) => {
@@ -510,7 +579,7 @@ const LiveScoringPage = () => {
                 <div className="grid grid-cols-3 gap-4">
                   <button onClick={() => updateScore(1, 'wide')} disabled={updating} className="btn bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-600 hover:text-white py-4 font-black rounded-xl text-lg uppercase">WD</button>
                   <button onClick={() => updateScore(1, 'no-ball')} disabled={updating} className="btn bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-600 hover:text-white py-4 font-black rounded-xl text-lg uppercase">NB</button>
-                  <button onClick={() => updateScore(0, 'wicket')} disabled={updating} className="btn bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white py-4 font-black rounded-xl text-lg uppercase">Out</button>
+                  <button onClick={handleWicketPress} disabled={updating} className="btn bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white py-4 font-black rounded-xl text-lg uppercase">Out</button>
                 </div>
                 <div className="flex gap-4 mt-8 pt-6 border-t border-surface-border">
                   <button onClick={undoLastBall} disabled={updating} className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-warning text-warning font-bold hover:bg-warning hover:text-white transition-all">
@@ -556,8 +625,13 @@ const LiveScoringPage = () => {
                         <tbody className="divide-y divide-surface-border">
                             {score.batting?.map((b, i) => (
                                 <tr key={i} className={`hover:bg-primary/5 transition-colors ${b.isOut ? 'opacity-70' : ''}`}>
-                                    <td className="px-6 py-4 font-bold text-txt-primary flex items-center gap-2">
-                                        {b.playerName} {b.isOut ? <span className="text-[10px] font-normal text-danger uppercase border border-danger/20 px-1 rounded">Out</span> : <span className="text-[10px] font-normal text-success uppercase border border-success/20 px-1 rounded">Not Out</span>}
+                                    <td className="px-6 py-4 text-txt-primary">
+                                        <div className="flex flex-col">
+                                            <span className="font-bold">{b.playerName}</span>
+                                            <span className="text-[10px] text-txt-muted mt-0.5">
+                                                {b.isOut ? (b.dismissalDescription || b.dismissalType || 'Out') : 'not out'}
+                                            </span>
+                                        </div>
                                     </td>
                                     <td className="px-4 py-4 text-center font-black text-primary text-base">{b.runs}</td>
                                     <td className="px-4 py-4 text-center text-txt-secondary">{b.ballsFaced}</td>
@@ -766,6 +840,120 @@ const LiveScoringPage = () => {
                   <span className="text-xs text-txt-muted uppercase tracking-tighter">{player.role}</span>
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dismissal Modal */}
+      {showDismissalModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 uppercase">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-slide-up">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-600 to-red-700 p-5 text-white">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="font-black text-lg uppercase tracking-widest">Wicket! 🏏</h2>
+                  <p className="text-red-100 text-[10px] mt-1 font-bold">How was the batsman dismissed?</p>
+                </div>
+                <button onClick={() => setShowDismissalModal(false)} className="text-white/70 hover:text-white text-xl font-bold">✕</button>
+              </div>
+            </div>
+
+            {/* Dismissal type grid */}
+            <div className="p-4 max-h-72 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-2">
+                {DISMISSAL_TYPES.map(dt => (
+                  <button
+                    key={dt.value}
+                    onClick={() => setSelectedDismissalType(dt.value)}
+                    className={`p-3 rounded-xl border-2 text-left transition-all ${
+                      selectedDismissalType === dt.value
+                        ? 'border-red-500 bg-red-50 shadow-sm'
+                        : 'border-surface-border hover:border-red-200 hover:bg-red-50/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg">{dt.icon}</span>
+                      <span className={`font-black text-[11px] uppercase tracking-wide ${
+                        selectedDismissalType === dt.value ? 'text-red-600' : 'text-txt-primary'
+                      }`}>{dt.label}</span>
+                    </div>
+                    <p className="text-[9px] text-txt-muted leading-tight font-medium normal-case">{dt.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Fielder Selection (Conditional) */}
+            {selectedDismissalType && DISMISSAL_TYPES.find(t => t.value === selectedDismissalType)?.needsFielder && (
+              <div className="px-4 pb-4 border-t border-surface-border pt-4 bg-red-50/30">
+                <label className="block text-[10px] font-black text-red-600 uppercase tracking-widest mb-2">
+                  Select {selectedDismissalType === 'STUMPED' ? 'Keeper' : 'Fielder'}
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {bowlingPlayers
+                    .filter(player => {
+                      if (selectedDismissalType === 'STUMPED') return player.role === 'wicketkeeper';
+                      return true; // Show all for others (including bowler for c&b)
+                    })
+                    .map(player => (
+                    <button
+                      key={player._id}
+                      onClick={() => setSelectedFielderId(player._id)}
+                      className={`px-3 py-2 rounded-lg text-[10px] font-bold border transition-all ${
+                        selectedFielderId === player._id
+                          ? 'bg-red-600 text-white border-red-700 shadow-sm'
+                          : 'bg-white text-txt-primary border-surface-border hover:border-red-300'
+                      }`}
+                    >
+                      {player.name}
+                      {player.role === 'wicketkeeper' && <span className="ml-1 text-[8px] opacity-70">🧤</span>}
+                    </button>
+                  ))}
+                </div>
+                {selectedDismissalType === 'STUMPED' && bowlingPlayers.filter(p => p.role === 'wicketkeeper').length === 0 && (
+                  <p className="text-[10px] text-txt-muted mt-2 text-center italic">No player with &quot;wicketkeeper&quot; role found in fielding team. Please select a fielder below:</p>
+                )}
+                {selectedDismissalType === 'STUMPED' && bowlingPlayers.filter(p => p.role === 'wicketkeeper').length === 0 && (
+                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                   {bowlingPlayers.map(player => (
+                     <button
+                       key={player._id}
+                       onClick={() => setSelectedFielderId(player._id)}
+                       className={`px-3 py-2 rounded-lg text-[10px] font-bold border transition-all ${
+                         selectedFielderId === player._id
+                           ? 'bg-red-600 text-white border-red-700 shadow-sm'
+                           : 'bg-white text-txt-primary border-surface-border hover:border-red-300'
+                       }`}
+                     >
+                       {player.name}
+                     </button>
+                   ))}
+                 </div>
+                )}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="p-4 flex gap-3 border-t border-surface-border bg-surface-alt">
+              <button
+                onClick={() => setShowDismissalModal(false)}
+                className="flex-1 py-3 rounded-xl border border-surface-border text-txt-muted font-bold hover:bg-white transition-all text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDismissal}
+                disabled={!selectedDismissalType}
+                className={`flex-1 py-3 rounded-xl font-black uppercase tracking-wide transition-all text-sm ${
+                  selectedDismissalType
+                    ? 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/20'
+                    : 'bg-surface-alt text-txt-muted cursor-not-allowed border border-surface-border'
+                }`}
+              >
+                Confirm Wicket
+              </button>
             </div>
           </div>
         </div>

@@ -350,8 +350,13 @@ const MatchSummaryPage = () => {
                     <tbody className="divide-y divide-surface-border">
                       {score.batting?.map((b, i) => (
                         <tr key={i} className={`hover:bg-primary/5 transition-colors ${b.isOut ? 'opacity-70' : ''}`}>
-                          <td className="px-6 py-4 font-bold text-txt-primary flex items-center gap-2">
-                            {b.playerName} {b.isOut ? <span className="text-[10px] font-normal text-danger uppercase border border-danger/20 px-1 rounded">Out</span> : <span className="text-[10px] font-normal text-success uppercase border border-success/20 px-1 rounded">Not Out</span>}
+                          <td className="px-6 py-4 text-txt-primary">
+                            <div className="flex flex-col">
+                              <span className="font-bold">{b.playerName}</span>
+                              <span className="text-[10px] text-txt-muted mt-0.5">
+                                {b.isOut ? (b.dismissalDescription || b.dismissalType || 'Out') : 'not out'}
+                              </span>
+                            </div>
                           </td>
                           <td className="px-4 py-4 text-center font-black text-primary text-base">{b.runs}</td>
                           <td className="px-4 py-4 text-center text-txt-secondary">{b.ballsFaced}</td>

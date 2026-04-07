@@ -49,6 +49,9 @@ const LiveScoringPage = () => {
   const [selectedDismissalType, setSelectedDismissalType] = useState(null);
   const [selectedFielderId, setSelectedFielderId] = useState(null);
 
+  // Celebration state
+  const [celebration, setCelebration] = useState({ type: null, teamId: null });
+
   useEffect(() => {
     fetchMatch();
     if (id) {
@@ -152,6 +155,12 @@ const LiveScoringPage = () => {
       const newScore = res.data.data;
       setScores(prev => prev.map(s => s.teamId === activeTeamId ? newScore : s));
       
+      // Trigger celebration for 4 or 6
+      if (runs === 4 || runs === 6) {
+        setCelebration({ type: runs.toString(), teamId: activeTeamId });
+        setTimeout(() => setCelebration({ type: null, teamId: null }), 3000);
+      }
+
       // Auto-end match if status returned in response
       if (res.data.matchStatus === 'completed') {
         setMatch(prev => ({ 
@@ -379,11 +388,22 @@ const LiveScoringPage = () => {
             {/* Scores Center Area */}
             <div className="flex-1 flex justify-center items-center gap-6 md:gap-16 w-full">
               {/* Team 1 Score */}
-              <div className="text-center">
+              <div className="text-center relative">
                   <h2 className="text-3xl lg:text-4xl font-black tabular-nums tracking-tight">
                     {scores.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id).toString())?.runs || 0}/{scores.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id).toString())?.wickets || 0}
                   </h2>
                   <p className="text-sm text-white/60 font-medium mt-1">({scores.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id).toString())?.overs || 0} ov)</p>
+                  
+                  {/* Celebration Overlay for Team 1 */}
+                  {celebration.type && celebration.teamId?.toString() === (match.team1Id?._id || match.team1Id).toString() && (
+                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 animate-bounce-slow pointer-events-none">
+                      <div className={`px-4 py-2 rounded-full font-black text-xl shadow-2xl flex items-center gap-2 whitespace-nowrap ${celebration.type === '6' ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white border-2 border-white/50' : 'bg-gradient-to-r from-orange-500 to-red-500 text-white border-2 border-white/50'}`}>
+                         <span>🏏</span>
+                         <span>{celebration.type === '6' ? 'SIX!' : 'FOUR!'}</span>
+                         <span>⚾</span>
+                      </div>
+                    </div>
+                  )}
               </div>
 
               {/* Separator / Target */}
@@ -399,11 +419,22 @@ const LiveScoringPage = () => {
               </div>
 
               {/* Team 2 Score */}
-              <div className="text-center">
+              <div className="text-center relative">
                   <h2 className="text-3xl lg:text-4xl font-black tabular-nums tracking-tight">
                     {scores.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id).toString())?.runs || 0}/{scores.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id).toString())?.wickets || 0}
                   </h2>
                   <p className="text-sm text-white/60 font-medium mt-1">({scores.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id).toString())?.overs || 0} ov)</p>
+
+                  {/* Celebration Overlay for Team 2 */}
+                  {celebration.type && celebration.teamId?.toString() === (match.team2Id?._id || match.team2Id).toString() && (
+                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 animate-bounce-slow pointer-events-none">
+                      <div className={`px-4 py-2 rounded-full font-black text-xl shadow-2xl flex items-center gap-2 whitespace-nowrap ${celebration.type === '6' ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white border-2 border-white/50' : 'bg-gradient-to-r from-orange-500 to-red-500 text-white border-2 border-white/50'}`}>
+                         <span>🏏</span>
+                         <span>{celebration.type === '6' ? 'SIX!' : 'FOUR!'}</span>
+                         <span>⚾</span>
+                      </div>
+                    </div>
+                  )}
               </div>
             </div>
 

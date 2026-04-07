@@ -66,6 +66,7 @@ const CreateMatchPage = () => {
     tourEnd.setMinutes(tourEnd.getMinutes() - tourEnd.getTimezoneOffset());
 
     // Use the later of tournament start or current time
+    const now = new Date();
     const minDate = tourStart > now ? tourStart : now;
     const minDateTime = minDate.toISOString().slice(0, 16);
     const maxDateTime = tourEnd.toISOString().slice(0, 16);

@@ -7,11 +7,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5001',
+        target: 'http://127.0.0.1:4000',
         changeOrigin: true,
       },
       '/socket.io': {
-        target: 'http://localhost:5001',
+        target: 'http://localhost:4000',
         ws: true,
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {

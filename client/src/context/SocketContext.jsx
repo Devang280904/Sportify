@@ -11,7 +11,7 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     // Bypass Vite proxy during development to avoid ECONNABORTED errors
     const isDev = import.meta.env.MODE === 'development';
-    const socketUrl = isDev ? 'http://localhost:5001' : '';
+    const socketUrl = isDev ? 'http://localhost:4000' : '';
     const newSocket = io(socketUrl, {
       path: '/socket.io/', // Explicitly defined path
       transports: ['websocket'], // Use WebSocket primarily

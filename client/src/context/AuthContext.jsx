@@ -42,11 +42,19 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
-  const logout = () => {
-    localStorage.removeItem('sportify_token');
-    localStorage.removeItem('sportify_user');
-    setToken(null);
-    setUser(null);
+  const logout = async () => {
+    try {
+      if (token) {
+        await api.post('/auth/logout');
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      localStorage.removeItem('sportify_token');
+      localStorage.removeItem('sportify_user');
+      setToken(null);
+      setUser(null);
+    }
   };
 
   return (

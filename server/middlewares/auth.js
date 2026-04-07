@@ -20,6 +20,12 @@ const protect = async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'User not found' });
     }
+
+    // Update lastActive timestamp on every request
+    req.user.lastActive = Date.now();
+    req.user.isLoggedIn = true; // Ensure logged in status if session active
+    await req.user.save({ validateBeforeSave: false });
+
     next();
   } catch (error) {
     return res.status(401).json({ success: false, message: 'Not authorized, token invalid' });

@@ -77,10 +77,19 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    // Reset failed attempts on successful login
+    // Check for concurrent active session
+    // Threshold: 5 minutes of inactivity before considering the session expired
+    if (user.isLoggedIn && user.lastActive && (new Date() - user.lastActive < 5 * 60 * 1000)) {
+      return res.status(403).json({
+        success: false,
+        message: 'This account is already logged in on another device. Please wait 5 minutes or logout from the other device.',
+      });
+    }
+
     user.failedLoginAttempts = 0;
     user.lockedUntil = null;
-    user.lastLogin = new Date();
+    user.lastActive = new Date();
+    user.isLoggedIn = true;
     await user.save();
 
     const token = generateToken(user._id);
@@ -218,6 +227,23 @@ exports.resetPassword = async (req, res) => {
         email: user.email,
       },
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Logout user
+// @route   POST /api/auth/logout
+exports.logout = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (user) {
+      user.isLoggedIn = false;
+      user.lastActive = null;
+      await user.save({ validateBeforeSave: false });
+    }
+
+    res.json({ success: true, message: 'Logged out successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

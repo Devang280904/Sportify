@@ -158,7 +158,9 @@ exports.updateScore = async (req, res) => {
     if (match.status === 'scheduled') {
       await Match.findByIdAndUpdate(matchId, { $set: { status: 'live' } });
       const io = req.app.get('io');
-      io.to(`match:${matchId}`).emit('matchStarted', { matchId });
+      const startPayload = { matchId: matchId.toString() };
+      io.to(`match:${matchId}`).emit('matchStarted', startPayload);
+      io.emit('matchStarted', startPayload); // Global broadcast
     }
 
     const scoreRecord = await ScoreRecord.findOne({ matchId, teamId });
@@ -334,12 +336,14 @@ exports.updateScore = async (req, res) => {
            });
            
            const populatedMatch = await Match.findById(match._id).populate('winnerId', 'teamName logoURL');
-           io.to(`match:${matchId}`).emit('matchCompleted', { 
-             matchId: match._id, 
+           const completionPayload = { 
+             matchId: match._id.toString(), 
              winnerId: populatedMatch.winnerId, 
              resultMessage: match.resultMessage,
              status: 'completed'
-           });
+           };
+           io.to(`match:${matchId}`).emit('matchCompleted', completionPayload);
+           io.emit('matchCompleted', completionPayload); // Global broadcast
            
            // Update Player Global Stats here (similar to completeMatch endpoint)
            const records = await ScoreRecord.find({ matchId: match._id });
@@ -489,7 +493,9 @@ exports.swapInnings = async (req, res) => {
     const updatedMatch = await Match.findById(matchId);
 
     const io = req.app.get('io');
-    io.to(`match:${matchId}`).emit('inningsSwapped', { matchId, newBattingTeamId: otherTeamId, innings: newInnings });
+    const swapPayload = { matchId: matchId.toString(), newBattingTeamId: otherTeamId.toString(), innings: newInnings };
+    io.to(`match:${matchId}`).emit('inningsSwapped', swapPayload);
+    io.emit('scoreUpdated', { matchId: matchId.toString(), isSwapped: true }); // Notify list views too
 
     res.json({ success: true, data: updatedMatch });
   } catch (error) {
@@ -561,12 +567,14 @@ exports.completeMatch = async (req, res) => {
 
     const populatedMatch = await Match.findById(match._id).populate('winnerId', 'teamName logoURL');
     const io = req.app.get('io');
-    io.to(`match:${match._id}`).emit('matchCompleted', { 
-      matchId: match._id, 
+    const finalPayload = { 
+      matchId: match._id.toString(), 
       winnerId: populatedMatch.winnerId, 
       resultMessage: match.resultMessage,
       status: 'completed'
-    });
+    };
+    io.to(`match:${match._id}`).emit('matchCompleted', finalPayload);
+    io.emit('matchCompleted', finalPayload); // Global broadcast
 
     if (match.tournamentId) {
       await delCache(`points:${match.tournamentId}`);

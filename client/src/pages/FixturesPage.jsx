@@ -16,9 +16,11 @@ const FixturesPage = () => {
 
   useEffect(() => {
     if (!socket) return;
+    socket.on('matchCreated', () => fetchMatches());
     socket.on('matchStarted', () => fetchMatches());
     socket.on('matchCompleted', () => fetchMatches());
     return () => {
+      socket.off('matchCreated');
       socket.off('matchStarted');
       socket.off('matchCompleted');
     };

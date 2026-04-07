@@ -17,7 +17,7 @@ export default defineConfig({
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
             // Silencing common "noise" errors in the dev console
-            if (err.code === 'ECONNRESET' || err.code === 'EPIPE') {
+            if (err.code === 'ECONNRESET' || err.code === 'EPIPE' || err.code === 'ECONNABORTED') {
               return;
             }
             console.log('Proxy Error:', err.message);
@@ -29,8 +29,6 @@ export default defineConfig({
             // console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
           });
         },
-        timeout: 5000,
-        proxyTimeout: 5000,
       },
     },
     middlewareMode: false,

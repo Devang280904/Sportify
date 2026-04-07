@@ -78,7 +78,20 @@ exports.createMatch = async (req, res) => {
     await ScoreRecord.create({ matchId: match._id, teamId: team1Id });
     await ScoreRecord.create({ matchId: match._id, teamId: team2Id });
 
-    res.status(201).json({ success: true, data: match });
+    const populatedMatch = await Match.findById(match._id)
+      .populate('team1Id', 'teamName logoURL')
+      .populate('team2Id', 'teamName logoURL')
+      .populate({ 
+        path: 'tournamentId', 
+        select: 'name organizerId playersPerTeam',
+        populate: { path: 'organizerId', select: 'name' }
+      })
+      .populate('createdBy', 'name');
+
+    const io = req.app.get('io');
+    io.emit('matchCreated', populatedMatch);
+
+    res.status(201).json({ success: true, data: populatedMatch });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -194,10 +207,14 @@ exports.startMatch = async (req, res) => {
     ).populate('team1Id', 'teamName').populate('team2Id', 'teamName');
 
     const io = req.app.get('io');
-    io.to(`match:${updatedMatch._id}`).emit('matchStarted', {
-      matchId: updatedMatch._id,
-      battingTeamId: updatedMatch.battingTeamId,
-    });
+    // Emit matchStarted globally and to the room
+    const startPayload = {
+      matchId: updatedMatch._id.toString(),
+      battingTeamId: updatedMatch.battingTeamId.toString(),
+    };
+    
+    io.to(`match:${updatedMatch._id}`).emit('matchStarted', startPayload);
+    io.emit('matchStarted', startPayload); // Also notify users on Fixtures/Dashboard page
 
     res.json({ success: true, data: updatedMatch });
   } catch (error) {

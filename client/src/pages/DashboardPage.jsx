@@ -44,24 +44,36 @@ const DashboardPage = () => {
       handleDeleteMatch(data.matchId);
     });
 
-    socket.on('matchCompleted', (data) => {
-      setLiveMatches(prev => prev.filter(m => m._id !== data.matchId));
-      // Re-fetch or manually construct a basic match object for the 'Recent' list
-      // For speed, we'll just re-fetch the match list or move the existing one
-      setRecentMatches(prev => {
-        // Find the match in liveMatches if it exists
-        const finishedMatch = liveMatches.find(m => m._id === data.matchId);
-        if (finishedMatch) {
-          const updatedMatch = { ...finishedMatch, status: 'completed', winnerId: data.winnerId };
-          return [updatedMatch, ...prev.slice(0, 5)];
+    socket.on('matchCreated', (newMatch) => {
+      setScheduledMatches(prev => {
+        if (prev.find(m => m._id === newMatch._id)) return prev;
+        return [...prev, newMatch].sort((a, b) => new Date(a.matchDate) - new Date(b.matchDate));
+      });
+      setStats(prev => ({ ...prev, matches: prev.matches + 1 }));
+    });
+
+    socket.on('matchStarted', (data) => {
+      // Find the match in scheduled and move to live
+      setScheduledMatches(prev => {
+        const startedMatch = prev.find(m => m._id === data.matchId);
+        if (startedMatch) {
+          setLiveMatches(live => [...live, { ...startedMatch, status: 'live', battingTeamId: data.battingTeamId }]);
+          return prev.filter(m => m._id !== data.matchId);
         }
         return prev;
       });
     });
 
+    socket.on('matchCompleted', (data) => {
+      setLiveMatches(prev => prev.filter(m => m._id === data.matchId ? false : true));
+      fetchData(); // Simplest way to ensure recent list is correct
+    });
+
     return () => {
       socket.off('scoreUpdated');
       socket.off('matchDeleted');
+      socket.off('matchCreated');
+      socket.off('matchStarted');
       socket.off('matchCompleted');
     };
   }, [socket]);

@@ -17,6 +17,12 @@ const TeamsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (searchParams.get('create') === 'true') {
+      setShowModal(true);
+    }
+  }, [searchParams]);
+
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
@@ -96,8 +102,8 @@ const TeamsPage = () => {
             />
           </div>
           {user && (
-            <button onClick={() => setShowModal(true)} className="btn-primary inline-flex items-center space-x-2 h-10 px-4">
-              <HiOutlinePlus /> <span>New Team</span>
+            <button onClick={() => setShowModal(true)} className="btn-primary inline-flex items-center space-x-2 h-11 px-5 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]">
+              <HiOutlinePlus className="text-xl" /> <span className="font-bold">New Team</span>
             </button>
           )}
         </div>
@@ -107,8 +113,8 @@ const TeamsPage = () => {
       <div className="flex bg-surface-card rounded-lg border border-surface-border p-1">
         <button
           onClick={() => setFilter('myTeams')}
-          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${filter === 'myTeams'
-              ? 'bg-primary text-white shadow-sm'
+          className={`flex-1 px-4 py-2.5 rounded-md text-sm font-bold transition-all ${filter === 'myTeams'
+              ? 'bg-primary text-white shadow-md'
               : 'text-txt-secondary hover:text-primary'
             }`}
         >
@@ -116,8 +122,8 @@ const TeamsPage = () => {
         </button>
         <button
           onClick={() => setFilter('otherTeams')}
-          className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${filter === 'otherTeams'
-              ? 'bg-primary text-white shadow-sm'
+          className={`flex-1 px-4 py-2.5 rounded-md text-sm font-bold transition-all ${filter === 'otherTeams'
+              ? 'bg-primary text-white shadow-md'
               : 'text-txt-secondary hover:text-primary'
             }`}
         >
@@ -165,13 +171,13 @@ const TeamsPage = () => {
                         <h3 className="text-lg font-bold text-txt-primary truncate group-hover:text-primary transition-colors">
                           {team.teamName}
                         </h3>
-                        <div className="mt-1 flex items-center font-medium">
+                        <div className="mt-1.5 flex items-center font-bold">
                           {team.tournamentIds?.[0]?.name ? (
-                            <span className="bg-primary/5 text-primary text-[11px] px-2 py-0.5 rounded border border-primary/10 truncate max-w-[140px] sm:max-w-[180px]">
+                            <span className="bg-primary/5 text-primary text-xs px-2.5 py-1 rounded-lg border border-primary/10 truncate max-w-[140px] sm:max-w-[180px]">
                               {team.tournamentIds[0].name}
                             </span>
                           ) : (
-                            <span className="bg-secondary/5 text-secondary text-[11px] px-2 py-0.5 rounded border border-secondary/10 uppercase tracking-widest font-bold">
+                            <span className="bg-secondary/5 text-secondary text-[11px] px-2.5 py-1 rounded-lg border border-secondary/10 uppercase tracking-widest font-black">
                               Global Team
                             </span>
                           )}
@@ -200,14 +206,14 @@ const TeamsPage = () => {
                            <div className="w-7 h-7 rounded-full bg-surface border-2 border-white border-dashed flex items-center justify-center shadow-sm"></div>
                          )}
                        </div>
-                       <span className="text-[11px] font-bold text-txt-muted uppercase tracking-widest pl-1">
-                         {team.players?.length || 0} Player{(team.players?.length !== 1) ? 's' : ''}
-                       </span>
-                    </div>
-                    
-                    <span className="text-[10px] uppercase font-black tracking-widest text-primary/70 group-hover:text-primary transition-colors">
-                      View Squad →
-                    </span>
+                        <span className="text-xs font-black text-txt-secondary uppercase tracking-widest pl-1">
+                          {team.players?.length || 0} Player{(team.players?.length !== 1) ? 's' : ''}
+                        </span>
+                     </div>
+                     
+                     <span className="text-xs uppercase font-black tracking-widest text-primary/80 group-hover:text-primary transition-colors">
+                       View Squad →
+                     </span>
                   </div>
                 </Link>
 

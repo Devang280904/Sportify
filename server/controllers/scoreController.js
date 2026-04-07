@@ -200,7 +200,13 @@ exports.updateScore = async (req, res) => {
 
     const currentBallType = type || 'normal';
     const legalDelivery = isLegalDelivery(currentBallType);
-    const safeRuns = Number.isFinite(runs) ? runs : 0;
+    
+    // For NB and Wide, the 'runs' parameter should represent runs scored by the BATSMAN. 
+    // The +1 extra for the NB/Wide itself is added below.
+    const extraRun = (currentBallType === 'wide' || currentBallType === 'no-ball') ? 1 : 0;
+    const batsmanRuns = Number.isFinite(runs) ? runs : 0;
+    const totalRunsForBall = batsmanRuns + extraRun;
+
     const overNumber = Math.floor(legalBallsBefore / 6) + 1;
 
     // Find names
@@ -210,12 +216,16 @@ exports.updateScore = async (req, res) => {
     const ballData = {
       ballNumber: scoreRecord.ballByBall.length + 1,
       over: overNumber,
-      runs: safeRuns,
+      runs: totalRunsForBall,
+      batsmanRuns: batsmanRuns,
+      extraRuns: extraRun,
       type: currentBallType,
       description: description || '',
       batsmanName: striker ? striker.playerName : 'Unknown',
       bowlerName: bowler ? bowler.playerName : 'Unknown',
       batsmanId: currentStrikerId,
+      strikerId: currentStrikerId,
+      nonStrikerId: scoreRecord.nonStrikerId,
       bowlerId: currentBowlerId,
       dismissalType: currentBallType === 'wicket' ? (dismissalType || null) : null,
       dismissalDescription: currentBallType === 'wicket' ? (dismissalDescription || '') : '',
@@ -223,20 +233,26 @@ exports.updateScore = async (req, res) => {
     };
 
     scoreRecord.ballByBall.push(ballData);
-    scoreRecord.runs += safeRuns;
+    scoreRecord.runs += totalRunsForBall;
 
     // Update batsman stats
     if (striker) {
-      striker.runs += safeRuns;
-      striker.ballsFaced += 1;
-      if (safeRuns === 4) striker.fours += 1;
-      if (safeRuns === 6) striker.sixes += 1;
+      // Batsman ONLY gets credit for runs scored off the bat, not extras
+      striker.runs += batsmanRuns;
+
+      // Wides are NOT counted as balls faced by the batsman in official statistics
+      if (currentBallType !== 'wide') {
+        striker.ballsFaced += 1;
+      }
+
+      if (batsmanRuns === 4) striker.fours += 1;
+      if (batsmanRuns === 6) striker.sixes += 1;
       if (currentBallType === 'wicket') {
         striker.isOut = true;
         striker.dismissalType = dismissalType || null;
         striker.dismissalDescription = dismissalDescription || '';
       }
-      striker.strikeRate = (striker.runs / striker.ballsFaced) * 100;
+      striker.strikeRate = striker.ballsFaced > 0 ? (striker.runs / striker.ballsFaced) * 100 : 0;
     }
 
     // Update bowler stats
@@ -245,8 +261,9 @@ exports.updateScore = async (req, res) => {
       if (legalDelivery && (bowler.ballsBowled / 6) >= maxBowlerOvers) {
         return res.status(400).json({ success: false, message: `Bowler ${bowler.playerName} has already completed their maximum limit of ${maxBowlerOvers} overs.` });
       }
-      
-      bowler.runsConceded += safeRuns;
+
+      // Bowler conceded all runs on the ball (including extras)
+      bowler.runsConceded += totalRunsForBall;
       if (legalDelivery) {
         bowler.ballsBowled += 1;
         bowler.oversBowled = toOverNotation(bowler.ballsBowled);
@@ -267,8 +284,8 @@ exports.updateScore = async (req, res) => {
 
     // Strike Rotation Logic
     let rotateStrike = false;
-    // Rotate on odd runs
-    if (safeRuns % 2 !== 0 && currentBallType !== 'wicket') {
+    // Rotate on odd runs from the bat
+    if (batsmanRuns % 2 !== 0 && currentBallType !== 'wicket') {
       rotateStrike = true;
     }
     // Rotate at end of over (6 balls)
@@ -410,18 +427,31 @@ exports.undoLastBall = async (req, res) => {
     }
 
     // Reverse batsman stats
-    const striker = scoreRecord.batting.find(b => b.playerId.toString() === lastBall.batsmanId.toString());
+    // Use the saved strikerId from ball history for exact attribution
+    const striker = scoreRecord.batting.find(b => b.playerId.toString() === (lastBall.strikerId || lastBall.batsmanId).toString());
     if (striker) {
-      striker.runs -= lastBall.runs;
-      striker.ballsFaced -= 1;
-      if (lastBall.runs === 4) striker.fours -= 1;
-      if (lastBall.runs === 6) striker.sixes -= 1;
+      // Revert ONLY batsman runs, not extras
+      striker.runs -= (lastBall.batsmanRuns || 0);
+      
+      // Wides don't count as balls faced, so don't undo ballsFaced for them
+      if (lastBall.type !== 'wide') {
+        striker.ballsFaced -= 1;
+      }
+      
+      if (lastBall.batsmanRuns === 4) striker.fours -= 1;
+      if (lastBall.batsmanRuns === 6) striker.sixes -= 1;
       if (lastBall.type === 'wicket') {
         striker.isOut = false;
         striker.dismissalType = null;
         striker.dismissalDescription = '';
       }
       striker.strikeRate = striker.ballsFaced > 0 ? (striker.runs / striker.ballsFaced) * 100 : 0;
+    }
+
+    // Ensure stats don't go negative (Safety check)
+    if (striker) {
+      if (striker.runs < 0) striker.runs = 0;
+      if (striker.ballsFaced < 0) striker.ballsFaced = 0;
     }
 
     // Reverse bowler stats
@@ -439,6 +469,10 @@ exports.undoLastBall = async (req, res) => {
     // Recalculate overs
     const legalBalls = countLegalBalls(scoreRecord.ballByBall);
     scoreRecord.overs = toOverNotation(legalBalls);
+
+    // Restore batting state (Striker/Non-Striker)
+    if (lastBall.strikerId) scoreRecord.strikerId = lastBall.strikerId;
+    if (lastBall.nonStrikerId) scoreRecord.nonStrikerId = lastBall.nonStrikerId;
 
     // Restore the currentBowlerId to the undone ball's bowler
     scoreRecord.currentBowlerId = lastBall.bowlerId;

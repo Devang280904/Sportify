@@ -6,7 +6,7 @@ import api from '../services/api';
 import ScoreCard from '../components/ScoreCard';
 import LiveIndicator from '../components/LiveIndicator';
 import { MdSportsCricket } from 'react-icons/md';
-import { HiOutlinePlus, HiOutlineCollection, HiOutlineUserGroup } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineCollection, HiOutlineUserGroup, HiOutlineChevronDown } from 'react-icons/hi';
 
 const DashboardPage = () => {
   const { user } = useAuth();
@@ -17,6 +17,7 @@ const DashboardPage = () => {
   const [stats, setStats] = useState({ tournaments: 0, teams: 0, matches: 0 });
   const [scores, setScores] = useState({});
   const [loading, setLoading] = useState(true);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const handleDeleteMatch = (deletedMatchId) => {
     setScheduledMatches(prev => prev.filter(m => m._id !== deletedMatchId));
@@ -130,10 +131,40 @@ const DashboardPage = () => {
           </h1>
         </div>
         {user && (
-          <Link to="/matches/create" className="btn-primary inline-flex items-center space-x-2">
-            <HiOutlinePlus className="text-lg" />
-            <span>Create Match</span>
-          </Link>
+          <div className="relative">
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+              className="btn-primary inline-flex items-center space-x-2 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <HiOutlinePlus className={`text-lg transition-transform ${isDropdownOpen ? 'rotate-45' : ''}`} />
+              <span className="font-bold">Quick Actions</span>
+              <HiOutlineChevronDown className={`text-sm transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-surface-card border border-surface-border rounded-xl shadow-card-lg z-50 overflow-hidden animate-fade-in-down origin-top-right">
+                <Link to="/matches/create" className="flex items-center space-x-3 px-4 py-3 hover:bg-surface-hover hover:text-primary transition-colors border-b border-surface-border/50">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <MdSportsCricket className="text-lg" />
+                  </div>
+                  <span className="font-semibold text-sm">Create New Match</span>
+                </Link>
+                <Link to="/teams?create=true" className="flex items-center space-x-3 px-4 py-3 hover:bg-surface-hover hover:text-secondary transition-colors border-b border-surface-border/50">
+                  <div className="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+                    <HiOutlineUserGroup className="text-lg" />
+                  </div>
+                  <span className="font-semibold text-sm">Create New Team</span>
+                </Link>
+                <Link to="/tournaments?create=true" className="flex items-center space-x-3 px-4 py-3 hover:bg-surface-hover hover:text-accent transition-colors">
+                  <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
+                    <HiOutlineCollection className="text-lg" />
+                  </div>
+                  <span className="font-semibold text-sm">Start Tournament</span>
+                </Link>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -146,8 +177,8 @@ const DashboardPage = () => {
             <MdSportsCricket className="text-2xl text-primary" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-txt-primary">Local Tournaments</h2>
-            <p className="text-xs text-txt-muted">Matches hosted on this platform</p>
+            <h2 className="text-xl font-bold text-txt-primary">Local Tournaments</h2>
+            <p className="text-sm text-txt-muted">Matches hosted on this platform</p>
           </div>
         </div>
 

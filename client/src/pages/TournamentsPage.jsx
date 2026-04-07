@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { HiOutlinePlus, HiOutlineX, HiOutlineCalendar, HiOutlineTrash, HiOutlineSearch } from 'react-icons/hi';
@@ -7,6 +7,7 @@ import { HiOutlinePlus, HiOutlineX, HiOutlineCalendar, HiOutlineTrash, HiOutline
 const TournamentsPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [tournaments, setTournaments] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(null);
@@ -18,13 +19,21 @@ const TournamentsPage = () => {
   const [dateError, setDateError] = useState('');
   const [todayDate, setTodayDate] = useState('');
 
-  // Calculate today's date in YYYY-MM-DD format
+  // Calculate today's date in YYYY-MM-DD format (IST / Local safe)
   useEffect(() => {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dateString = today.toISOString().split('T')[0];
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
     setTodayDate(dateString);
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get('create') === 'true') {
+      setShowModal(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => { fetchTournaments(); }, []);
 
@@ -172,7 +181,7 @@ const TournamentsPage = () => {
           <div className="flex bg-surface-card rounded-lg border border-surface-border p-1 w-fit">
             {['my', 'other'].map(v => (
               <button key={v} onClick={() => setView(v)}
-                className={`px-4 py-1.5 rounded-md text-xs font-semibold capitalize transition-all ${view === v ? 'bg-primary text-white shadow-sm' : 'text-txt-secondary hover:text-primary'
+                className={`px-5 py-2 rounded-md text-sm font-bold capitalize transition-all ${view === v ? 'bg-primary text-white shadow-md' : 'text-txt-secondary hover:text-primary'
                   }`}>{v}</button>
             ))}
           </div>
@@ -185,13 +194,13 @@ const TournamentsPage = () => {
               placeholder="Search tournaments..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input pl-10 h-10 text-sm"
+              className="input pl-10 h-11 text-base shadow-sm"
             />
           </div>
           <div className="flex bg-surface-card rounded-lg border border-surface-border p-1">
             {['all', 'upcoming', 'ongoing', 'completed'].map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-all ${filter === f ? 'bg-primary text-white shadow-sm' : 'text-txt-secondary hover:text-primary'
+                className={`px-4 py-2 rounded-md text-sm font-bold capitalize transition-all ${filter === f ? 'bg-primary text-white shadow-md' : 'text-txt-secondary hover:text-primary'
                   }`}>{f === 'ongoing' ? 'Live' : f}</button>
             ))}
           </div>

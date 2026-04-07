@@ -8,7 +8,7 @@ const DashboardLayout = () => {
       <Navbar />
       <div className="flex">
         <Sidebar />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 animate-fade-in">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 animate-fade-in relative">
           <Outlet />
         </main>
       </div>

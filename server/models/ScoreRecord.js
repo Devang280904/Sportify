@@ -98,6 +98,8 @@ const scoreRecordSchema = new mongoose.Schema({
     ballNumber: Number,
     over: Number,
     runs: Number,
+    batsmanRuns: { type: Number, default: 0 },
+    extraRuns: { type: Number, default: 0 },
     type: {
       type: String,
       enum: ['normal', 'wide', 'no-ball', 'wicket', 'bye', 'leg-bye'],
@@ -106,6 +108,14 @@ const scoreRecordSchema = new mongoose.Schema({
     batsmanName: String,
     bowlerName: String,
     batsmanId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Player',
+    },
+    strikerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Player',
+    },
+    nonStrikerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Player',
     },

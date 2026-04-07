@@ -134,11 +134,12 @@ const LiveScoringPage = () => {
   const bowlingTeam = activeTeamId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? match?.team2Id : match?.team1Id;
   const battingPlayers = activeTeamId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? team1Players : team2Players;
   const bowlingPlayers = activeTeamId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? team2Players : team1Players;
+  const lastBall = activeScore?.ballByBall?.[activeScore.ballByBall.length - 1];
+  const isFreeHit = lastBall?.type === 'no-ball';
 
   const updateScore = async (runs, type = 'normal', description = '', dismissalType = null, dismissalDesc = '') => {
     if (!activeTeamId || updating) return;
     if (!activeScore?.strikerId || !activeScore?.currentBowlerId) {
-      alert('Please select striker and bowler first');
       return;
     }
 
@@ -415,6 +416,11 @@ const LiveScoringPage = () => {
                     }</span>
                   </div>
                 )}
+                {activeScore?.ballByBall?.[activeScore.ballByBall.length - 1]?.type === 'no-ball' && (
+                  <div className="mb-2 px-3 py-1 bg-red-600 rounded-full animate-pulse shadow-lg shadow-red-600/40 border border-white/20">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white">FREE HIT</span>
+                  </div>
+                )}
                 <span className="font-black text-white/20 uppercase tracking-[0.2em] text-sm">V/S</span>
               </div>
 
@@ -601,16 +607,16 @@ const LiveScoringPage = () => {
                 <div className="grid grid-cols-4 sm:grid-cols-7 gap-3 mb-6">
                   {[0, 1, 2, 3, 4, 5, 6].map(runs => (
                     <button key={runs} onClick={() => updateScore(runs)} disabled={updating}
-                      className="h-16 flex flex-col items-center justify-center bg-surface-alt border border-surface-border hover:bg-primary hover:text-white hover:border-primary text-txt-primary rounded-xl transition-all group">
-                      <span className="text-2xl font-black">{runs}</span>
-                      <span className="text-[10px] opacity-0 group-hover:opacity-100 uppercase">Runs</span>
+                      className="h-20 flex flex-col items-center justify-center bg-white border-2 border-surface-border hover:bg-primary hover:text-white hover:border-primary text-txt-primary rounded-xl transition-all group shadow-sm active:scale-95">
+                      <span className="text-3xl font-black">{runs}</span>
+                      <span className="text-[12px] font-bold opacity-60 group-hover:opacity-100 uppercase tracking-tight">Runs</span>
                     </button>
                   ))}
                 </div>
                 <div className="grid grid-cols-3 gap-4">
-                  <button onClick={() => updateScore(1, 'wide')} disabled={updating} className="btn bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-600 hover:text-white py-4 font-black rounded-xl text-lg uppercase">WD</button>
-                  <button onClick={() => updateScore(1, 'no-ball')} disabled={updating} className="btn bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-600 hover:text-white py-4 font-black rounded-xl text-lg uppercase">NB</button>
-                  <button onClick={handleWicketPress} disabled={updating} className="btn bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white py-4 font-black rounded-xl text-lg uppercase">Out</button>
+                  <button onClick={() => updateScore(0, 'wide')} disabled={updating} className="btn bg-orange-50 text-orange-600 border-2 border-orange-200 hover:bg-orange-600 hover:text-white py-6 font-black rounded-xl text-xl uppercase tracking-tighter shadow-md">Wide</button>
+                  <button onClick={() => updateScore(0, 'no-ball')} disabled={updating} className="btn bg-orange-50 text-orange-600 border-2 border-orange-200 hover:bg-orange-600 hover:text-white py-6 font-black rounded-xl text-xl uppercase tracking-tighter shadow-md">No Ball</button>
+                  <button onClick={handleWicketPress} disabled={updating} className="btn bg-red-50 text-red-600 border-2 border-red-200 hover:bg-red-600 hover:text-white py-6 font-black rounded-xl text-xl uppercase tracking-tighter shadow-md">Out / W</button>
                 </div>
                 <div className="flex gap-4 mt-8 pt-6 border-t border-surface-border">
                   <button onClick={undoLastBall} disabled={updating} className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-warning text-warning font-bold hover:bg-warning hover:text-white transition-all">
@@ -881,11 +887,13 @@ const LiveScoringPage = () => {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 uppercase">
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-slide-up">
             {/* Header */}
-            <div className="bg-gradient-to-r from-red-600 to-red-700 p-5 text-white">
+            <div className={`p-5 text-white bg-gradient-to-r ${isFreeHit ? 'from-orange-600 to-red-600' : 'from-red-600 to-red-700'}`}>
               <div className="flex justify-between items-center">
                 <div>
-                  <h2 className="font-black text-lg uppercase tracking-widest">Wicket! 🏏</h2>
-                  <p className="text-red-100 text-[10px] mt-1 font-bold">How was the batsman dismissed?</p>
+                  <h2 className="font-black text-xl uppercase tracking-widest">Wicket! 🏏</h2>
+                  <p className="text-red-50 text-xs mt-1 font-bold">
+                    {isFreeHit ? '⚠ FREE HIT ACTIVE: Limited modes of dismissal.' : 'How was the batsman dismissed?'}
+                  </p>
                 </div>
                 <button onClick={() => setShowDismissalModal(false)} className="text-white/70 hover:text-white text-xl font-bold">✕</button>
               </div>
@@ -894,7 +902,13 @@ const LiveScoringPage = () => {
             {/* Dismissal type grid */}
             <div className="p-4 max-h-72 overflow-y-auto">
               <div className="grid grid-cols-2 gap-2">
-                {DISMISSAL_TYPES.map(dt => (
+                {DISMISSAL_TYPES
+                  .filter(dt => {
+                    if (!isFreeHit) return true;
+                    // Only these are legal dismissals during a Free Hit
+                    return ['RUN_OUT', 'STUMPED', 'HIT_BALL_TWICE', 'OBSTRUCTING_FIELD'].includes(dt.value);
+                  })
+                  .map(dt => (
                   <button
                     key={dt.value}
                     onClick={() => setSelectedDismissalType(dt.value)}
@@ -905,12 +919,12 @@ const LiveScoringPage = () => {
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-lg">{dt.icon}</span>
-                      <span className={`font-black text-[11px] uppercase tracking-wide ${
+                      <span className="text-xl">{dt.icon}</span>
+                      <span className={`font-black text-xs uppercase tracking-wide ${
                         selectedDismissalType === dt.value ? 'text-red-600' : 'text-txt-primary'
                       }`}>{dt.label}</span>
                     </div>
-                    <p className="text-[9px] text-txt-muted leading-tight font-medium normal-case">{dt.desc}</p>
+                    <p className="text-[10px] text-txt-muted leading-tight font-medium normal-case">{dt.desc}</p>
                   </button>
                 ))}
               </div>
@@ -919,7 +933,7 @@ const LiveScoringPage = () => {
             {/* Fielder Selection (Conditional) */}
             {selectedDismissalType && DISMISSAL_TYPES.find(t => t.value === selectedDismissalType)?.needsFielder && (
               <div className="px-4 pb-4 border-t border-surface-border pt-4 bg-red-50/30">
-                <label className="block text-[10px] font-black text-red-600 uppercase tracking-widest mb-2">
+                <label className="block text-xs font-black text-red-600 uppercase tracking-widest mb-3">
                   Select {selectedDismissalType === 'STUMPED' ? 'Keeper' : 'Fielder'}
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -932,14 +946,14 @@ const LiveScoringPage = () => {
                     <button
                       key={player._id}
                       onClick={() => setSelectedFielderId(player._id)}
-                      className={`px-3 py-2 rounded-lg text-[10px] font-bold border transition-all ${
+                      className={`px-3 py-3 rounded-lg text-xs font-bold border transition-all ${
                         selectedFielderId === player._id
                           ? 'bg-red-600 text-white border-red-700 shadow-sm'
                           : 'bg-white text-txt-primary border-surface-border hover:border-red-300'
                       }`}
                     >
                       {player.name}
-                      {player.role === 'wicketkeeper' && <span className="ml-1 text-[8px] opacity-70">🧤</span>}
+                      {player.role === 'wicketkeeper' && <span className="ml-1 text-[10px] opacity-70">🧤</span>}
                     </button>
                   ))}
                 </div>
@@ -970,17 +984,17 @@ const LiveScoringPage = () => {
             <div className="p-4 flex gap-3 border-t border-surface-border bg-surface-alt">
               <button
                 onClick={() => setShowDismissalModal(false)}
-                className="flex-1 py-3 rounded-xl border border-surface-border text-txt-muted font-bold hover:bg-white transition-all text-sm"
+                className="flex-1 py-4 rounded-xl border-2 border-surface-border text-txt-muted font-bold hover:bg-white transition-all text-base"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDismissal}
                 disabled={!selectedDismissalType}
-                className={`flex-1 py-3 rounded-xl font-black uppercase tracking-wide transition-all text-sm ${
+                className={`flex-1 py-4 rounded-xl font-black uppercase tracking-widest transition-all text-base ${
                   selectedDismissalType
                     ? 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/20'
-                    : 'bg-surface-alt text-txt-muted cursor-not-allowed border border-surface-border'
+                    : 'bg-surface-alt text-txt-muted cursor-not-allowed border border-surface-border font-bold'
                 }`}
               >
                 Confirm Wicket

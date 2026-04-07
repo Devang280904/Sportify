@@ -14,10 +14,10 @@ const Sidebar = () => {
   const { user } = useAuth();
 
   const linkClass = ({ isActive }) =>
-    `flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+    `flex items-center space-x-4 px-5 py-3 rounded-xl transition-all duration-300 text-base font-bold ${
       isActive
-        ? 'bg-primary text-white shadow-md'
-        : 'text-txt-secondary hover:bg-primary/5 hover:text-primary'
+        ? 'bg-primary text-white shadow-lg shadow-primary/25 translate-x-1'
+        : 'text-txt-secondary hover:bg-primary/5 hover:text-primary hover:translate-x-1'
     }`;
 
   return (

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { MdSportsCricket } from 'react-icons/md';
+import SearchableSelect from '../components/SearchableSelect';
 
 const CreateMatchPage = () => {
   const navigate = useNavigate();
@@ -41,10 +42,14 @@ const CreateMatchPage = () => {
     return team ? (team.players?.length || 0) : 0;
   };
 
-  // Calculate current date and time in the correct local format for the min attribute
-  const now = new Date();
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-  const currentDateTime = now.toISOString().slice(0, 16);
+  // Calculate current date and time in the correct local format (IST / Local safe)
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const hours = String(today.getHours()).padStart(2, '0');
+  const minutes = String(today.getMinutes()).padStart(2, '0');
+  const currentDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
 
   // Calculate min/max datetime based on selected tournament
   const getMinMaxDateTime = () => {
@@ -94,7 +99,8 @@ const CreateMatchPage = () => {
         .catch(console.error);
     } else {
       setSelectedTournament(null);
-      api.get('/teams/my-teams')
+      // Change from my-teams to global teams to allow selecting any team for independent matches
+      api.get('/teams')
         .then(res => setTeams(res.data.data))
         .catch(console.error);
     }
@@ -194,40 +200,36 @@ const CreateMatchPage = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="label font-bold">Team 1 (Batting/Bowling)</label>
-              <select value={form.team1Id} onChange={e => setForm({...form, team1Id: e.target.value})}
-                className="input" required>
-                <option value="">Select team</option>
-                {teams.filter(t => t._id !== form.team2Id).map(t => {
+              <SearchableSelect
+                options={teams.filter(t => t._id !== form.team2Id)}
+                value={form.team1Id}
+                onChange={(val) => setForm({ ...form, team1Id: val })}
+                placeholder="Select team"
+                getOptionLabel={(t) => t.teamName}
+                getOptionSublabel={(t) => {
                   const playerCount = t.players?.length || 0;
                   const req = getRequiredPlayers();
-                  const isComplete = playerCount === req;
-                  return (
-                    <option key={t._id} value={t._id} className={!isComplete ? 'text-txt-muted' : 'text-txt-primary font-bold'}>
-                      {t.teamName} ({playerCount}/{req}) {isComplete ? '✓' : ' (Incomplete)'}
-                    </option>
-                  );
-                })}
-              </select>
+                  return `${playerCount}/${req} Players ${playerCount === req ? '✓' : '(Incomplete)'}`;
+                }}
+              />
             </div>
             <div>
               <label className="label font-bold">Team 2 (Opponent)</label>
-              <select value={form.team2Id} onChange={e => setForm({...form, team2Id: e.target.value})}
-                className="input" required>
-                <option value="">Select team</option>
-                {teams.filter(t => t._id !== form.team1Id).map(t => {
+              <SearchableSelect
+                options={teams.filter(t => t._id !== form.team1Id)}
+                value={form.team2Id}
+                onChange={(val) => setForm({ ...form, team2Id: val })}
+                placeholder="Select team"
+                getOptionLabel={(t) => t.teamName}
+                getOptionSublabel={(t) => {
                   const playerCount = t.players?.length || 0;
                   const req = getRequiredPlayers();
-                  const isComplete = playerCount === req;
-                  return (
-                    <option key={t._id} value={t._id} className={!isComplete ? 'text-txt-muted' : 'text-txt-primary font-bold'}>
-                      {t.teamName} ({playerCount}/{req}) {isComplete ? '✓' : ' (Incomplete)'}
-                    </option>
-                  );
-                })}
-              </select>
+                  return `${playerCount}/${req} Players ${playerCount === req ? '✓' : '(Incomplete)'}`;
+                }}
+              />
             </div>
           </div>
 
@@ -247,13 +249,41 @@ const CreateMatchPage = () => {
             </div>
             <div>
               <label className="label">Overs</label>
-              <select value={form.totalOvers} onChange={e => setForm({...form, totalOvers: Number(e.target.value)})}
-                className="input" required>
-                <option value={5}>5 Overs</option>
-                <option value={10}>10 Overs</option>
-                <option value={20}>20 Overs (T20)</option>
-                <option value={50}>50 Overs (ODI)</option>
-              </select>
+              <div className="space-y-2">
+                <select 
+                  value={[5, 10, 20, 50].includes(form.totalOvers) ? form.totalOvers : 'custom'} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (val === 'custom') {
+                      setForm({...form, totalOvers: 1}); // Initial custom value
+                    } else {
+                      setForm({...form, totalOvers: Number(val)});
+                    }
+                  }}
+                  className="input font-bold" required
+                >
+                  <option value={5}>5 Overs</option>
+                  <option value={10}>10 Overs</option>
+                  <option value={20}>20 Overs (T20)</option>
+                  <option value={50}>50 Overs (ODI)</option>
+                  <option value="custom">Custom Overs</option>
+                </select>
+                
+                {![5, 10, 20, 50].includes(form.totalOvers) && (
+                  <div className="animate-fade-in flex items-center space-x-2">
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max="100" 
+                      value={form.totalOvers} 
+                      onChange={e => setForm({...form, totalOvers: Number(e.target.value)})}
+                      className="input w-24 border-primary/30 focus:border-primary font-bold"
+                      placeholder="e.g. 15"
+                    />
+                    <span className="text-sm font-bold text-txt-muted uppercase tracking-widest">Overs</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

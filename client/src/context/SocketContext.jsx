@@ -9,11 +9,12 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    // Use relative path to let Vite proxy handle the connection to the correct port (5001)
-    const socketUrl = ''; // Use relative path for Vite proxy
+    // Bypass Vite proxy during development to avoid ECONNABORTED errors
+    const isDev = import.meta.env.MODE === 'development';
+    const socketUrl = isDev ? 'http://localhost:5001' : '';
     const newSocket = io(socketUrl, {
       path: '/socket.io/', // Explicitly defined path
-      transports: ['websocket', 'polling'], // Fallback strategy
+      transports: ['websocket'], // Use WebSocket primarily
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 10, // Increased for better recovery

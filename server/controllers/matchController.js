@@ -65,12 +65,7 @@ exports.createMatch = async (req, res) => {
     };
     if (tournamentId) matchData.tournamentId = tournamentId;
 
-    // Check ownership for independent matches as well
-    if (!tournamentId) {
-      if (team1.createdBy.toString() !== req.user.id && team2.createdBy.toString() !== req.user.id) {
-         return res.status(403).json({ success: false, message: 'You must own at least one of the teams to schedule an independent match.' });
-      }
-    }
+    // No longer requiring team ownership for independent matches as per user request to allow global team selection
     
     const match = await Match.create(matchData);
 

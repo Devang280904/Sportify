@@ -71,11 +71,11 @@
   }
   
   .label {
-    @apply block text-sm font-medium text-txt-secondary mb-1.5;
+    @apply block text-base font-bold text-txt-primary mb-2.5;
   }
-  
+
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-3.5 py-1.5 rounded-lg text-sm font-black uppercase tracking-widest;
   }
   
   .badge-live {
@@ -100,6 +100,10 @@
     animation: pop-in 0.5s cubic-bezier(0.26, 0.53, 0.74, 1.48) forwards;
   }
 
+  .animate-fade-in-down {
+    animation: fade-in-down 0.2s ease-out forwards;
+  }
+
   @keyframes bounce-slow {
     0%, 100% {
       transform: translateY(-25%) translateX(-50%);
@@ -119,6 +123,17 @@
     100% {
       opacity: 1;
       transform: scale(1) translateY(0) translateX(-50%);
+    }
+  }
+
+  @keyframes fade-in-down {
+    0% {
+      opacity: 0;
+      transform: translateY(-10px) scale(0.95);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
     }
   }
 }

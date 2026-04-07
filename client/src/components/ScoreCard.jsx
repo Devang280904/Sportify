@@ -56,16 +56,16 @@ const ScoreCard = ({ match, scores, onDelete }) => {
     >
       {/* Top Bar */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5">
-        <span className="text-[10px] text-white/50 uppercase font-black tracking-widest truncate max-w-[150px]">
+        <span className="text-xs text-white/50 uppercase font-black tracking-widest truncate max-w-[150px]">
           {match.tournamentId?.name || 'Local Series'}
         </span>
         <div className="flex items-center gap-2">
           {match.status === 'live' && <LiveIndicator />}
           {match.status === 'scheduled' && (
-            <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest bg-white/10 text-white/70">Scheduled</span>
+            <span className="px-2 py-0.5 rounded text-xs font-black uppercase tracking-widest bg-white/10 text-white/70">Scheduled</span>
           )}
           {match.status === 'completed' && (
-            <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest bg-white/5 text-white/40">Completed</span>
+            <span className="px-2 py-0.5 rounded text-xs font-black uppercase tracking-widest bg-white/5 text-white/40">Completed</span>
           )}
 
           {/* Delete Button - Only for Scheduled Matches */}
@@ -96,9 +96,9 @@ const ScoreCard = ({ match, scores, onDelete }) => {
             <span className="text-white text-sm font-bold uppercase tracking-wider">{match.team1Id?.teamName || 'Team 1'}</span>
           </div>
           {team1Score && (
-            <span className="text-white font-black text-lg font-mono">
-              {team1Score.runs}<span className="text-white/50 text-base">/{team1Score.wickets}</span>
-              <span className="text-white/40 text-[10px] font-sans font-bold ml-2 uppercase">({team1Score.overs} ov)</span>
+            <span className="text-white font-black text-xl font-mono">
+              {team1Score.runs}<span className="text-white/50 text-lg">/{team1Score.wickets}</span>
+              <span className="text-white/40 text-xs font-sans font-bold ml-2 uppercase">({team1Score.overs} ov)</span>
             </span>
           )}
         </div>
@@ -116,9 +116,9 @@ const ScoreCard = ({ match, scores, onDelete }) => {
             <span className="text-white text-sm font-bold uppercase tracking-wider">{match.team2Id?.teamName || 'Team 2'}</span>
           </div>
           {team2Score && (
-            <span className="text-white font-black text-lg font-mono">
-              {team2Score.runs}<span className="text-white/50 text-base">/{team2Score.wickets}</span>
-              <span className="text-white/40 text-[10px] font-sans font-bold ml-2 uppercase">({team2Score.overs} ov)</span>
+            <span className="text-white font-black text-xl font-mono">
+              {team2Score.runs}<span className="text-white/50 text-lg">/{team2Score.wickets}</span>
+              <span className="text-white/40 text-xs font-sans font-bold ml-2 uppercase">({team2Score.overs} ov)</span>
             </span>
           )}
         </div>
@@ -127,11 +127,11 @@ const ScoreCard = ({ match, scores, onDelete }) => {
       {/* Footer / Results Info */}
       <div className="px-4 py-3 border-t border-white/10 bg-black/20 mt-1 text-center flex flex-col items-center justify-center min-h-[48px]">
          {match.status === 'completed' ? (
-           <p className="text-accent text-[10px] font-black uppercase tracking-widest">{match.resultMessage || (match.winnerId ? 'Match Completed' : 'Match Ended')}</p>
+           <p className="text-accent text-xs font-black uppercase tracking-widest">{match.resultMessage || (match.winnerId ? 'Match Completed' : 'Match Ended')}</p>
          ) : match.status === 'live' ? (
-           <p className="text-accent text-[10px] font-black uppercase tracking-widest animate-pulse">Match is in progress</p>
+           <p className="text-accent text-xs font-black uppercase tracking-widest animate-pulse">Match is in progress</p>
          ) : (
-           <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">
+           <p className="text-white/40 text-xs font-black uppercase tracking-widest">
              {new Date(match.matchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • {new Date(match.matchDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
            </p>
          )}

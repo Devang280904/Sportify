@@ -11,9 +11,8 @@ export default defineConfig({
         changeOrigin: true,
       },
       '/socket.io': {
-        target: 'http://127.0.0.1:5001',
+        target: 'http://localhost:5001',
         ws: true,
-        changeOrigin: true,
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
             // Silencing common "noise" errors in the dev console

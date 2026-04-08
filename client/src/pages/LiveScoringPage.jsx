@@ -8,6 +8,7 @@ import { HiOutlineRewind, HiOutlineSwitchHorizontal, HiOutlineChevronRight, HiOu
 import { MdSportsCricket, MdPersonAdd } from 'react-icons/md';
 import VictoryOverlay from '../components/VictoryOverlay';
 import CustomDialog from '../components/CustomDialog';
+import MatchGraphs from '../components/MatchGraphs';
 
 const DISMISSAL_TYPES = [
   { value: 'BOWLED',            label: 'Bowled',                       icon: '🎯', desc: 'Ball hits the stumps', prefix: 'b' },
@@ -35,7 +36,7 @@ const LiveScoringPage = () => {
   const [matchResult, setMatchResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [activeTab, setActiveTab] = useState('live'); // 'live', 'scorecard', 'squads'
+  const [activeTab, setActiveTab] = useState('live'); // 'live', 'scorecard', 'graphs', 'squads'
   const [showCelebration, setShowCelebration] = useState(false);
 
   // For selection modals/dropdowns
@@ -574,7 +575,7 @@ const LiveScoringPage = () => {
 
       {/* Tabs */}
       <div className="flex bg-primary-dark/95 rounded-b-xl border border-t-0 border-white/10 shadow-sm overflow-hidden mb-6">
-        {['live', 'scorecard', 'squads'].map(tab => (
+        {['live', 'scorecard', 'graphs', 'squads'].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`flex-1 py-4 px-4 text-[11px] md:text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === tab 
@@ -763,6 +764,10 @@ const LiveScoringPage = () => {
             </div>
           )}
         </>
+      )}
+
+      {activeTab === 'graphs' && (
+        <MatchGraphs scores={scores} match={match} />
       )}
 
       {activeTab === 'scorecard' && (

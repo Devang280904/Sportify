@@ -4,6 +4,7 @@ import api from '../services/api';
 import { useSocket } from '../context/SocketContext';
 import { MdSportsCricket, MdHistory, MdEmojiEvents } from 'react-icons/md';
 import { HiOutlineUserGroup, HiOutlineCalendar, HiOutlineLocationMarker } from 'react-icons/hi';
+import MatchGraphs from '../components/MatchGraphs';
 
 const processInningsBalls = (balls) => {
   let currentOver = 0;
@@ -69,7 +70,7 @@ const MatchSummaryPage = () => {
   const [scores, setScores] = useState([]);
   const [team1Players, setTeam1Players] = useState([]);
   const [team2Players, setTeam2Players] = useState([]);
-  const [activeTab, setActiveTab] = useState('live'); // 'live', 'scorecard', 'squads'
+  const [activeTab, setActiveTab] = useState('live'); // 'live', 'scorecard', 'graphs', 'squads'
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -229,7 +230,7 @@ const MatchSummaryPage = () => {
 
       {/* Tabs */}
       <div className="flex bg-primary-dark/95 rounded-b-xl border border-t-0 border-white/10 shadow-sm overflow-hidden mb-6">
-        {['live', 'scorecard', 'squads'].map(tab => (
+        {['live', 'scorecard', 'graphs', 'squads'].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`flex-1 py-4 px-4 text-[11px] md:text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab
                 ? 'text-white border-b-[3px] border-white bg-white/5'
@@ -322,6 +323,10 @@ const MatchSummaryPage = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {activeTab === 'graphs' && (
+        <MatchGraphs scores={scores} match={match} />
       )}
 
       {/* Scorecard Tab Content */}

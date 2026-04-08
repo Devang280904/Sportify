@@ -4,10 +4,12 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { HiOutlineTrash } from 'react-icons/hi';
 import { useState } from 'react';
+import CustomDialog from './CustomDialog';
 
 const ScoreCard = ({ match, scores, onDelete }) => {
   const { user } = useAuth();
   const [deleting, setDeleting] = useState(false);
+  const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'confirm', onConfirm: () => {} });
   
   // Use scores from prop (if passed for real-time updates) or from the injected match.scores
   const activeScores = scores && scores.length > 0 ? scores : (match.scores || []);
@@ -32,22 +34,34 @@ const ScoreCard = ({ match, scores, onDelete }) => {
     return `/match/${match._id}`; // Default Viewer Page
   };
 
-  const handleDelete = async (e) => {
+  const handleDelete = (e) => {
     e.preventDefault();
-    if (!window.confirm('Are you sure you want to delete this match? This action cannot be undone.')) {
-      return;
-    }
-
-    setDeleting(true);
-    try {
-      await api.delete(`/matches/${match._id}`);
-      if (onDelete) onDelete(match._id);
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete match');
-    } finally {
-      setDeleting(false);
-    }
+    setDialog({
+      isOpen: true,
+      title: 'Delete Match?',
+      message: 'Are you sure you want to delete this match? This action cannot be undone and will remove all scoring data.',
+      type: 'danger',
+      onConfirm: async () => {
+        setDeleting(true);
+        try {
+          await api.delete(`/matches/${match._id}`);
+          if (onDelete) onDelete(match._id);
+          setDialog(prev => ({ ...prev, isOpen: false }));
+        } catch (err) {
+          setDialog({
+            isOpen: true,
+            title: 'Error',
+            message: err.response?.data?.message || 'Failed to delete match',
+            type: 'alert',
+            onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+          });
+        } finally {
+          setDeleting(false);
+        }
+      }
+    });
   };
+  // hi
 
   return (
     <Link
@@ -136,6 +150,15 @@ const ScoreCard = ({ match, scores, onDelete }) => {
            </p>
          )}
       </div>
+
+      <CustomDialog 
+        isOpen={dialog.isOpen}
+        title={dialog.title}
+        message={dialog.message}
+        type={dialog.type}
+        onConfirm={dialog.onConfirm}
+        onCancel={() => setDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </Link>
   );
 };

@@ -34,8 +34,9 @@ exports.createTournament = async (req, res) => {
       startDate,
       endDate,
       status: status || 'upcoming',
-      organizerId: req.user.id,
+      organizerId: req.user._id,
       playersPerTeam: playersPerTeam || 11,
+      defaultOvers: req.body.defaultOvers || 20,
     });
     await delCache('tournaments:all');
     res.status(201).json({ success: true, data: tournament });
@@ -167,6 +168,37 @@ exports.deleteTournament = async (req, res) => {
     await delCache(`points:${req.params.id}`);
 
     res.json({ success: true, message: 'Tournament and all associated data deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Remove team from tournament
+// @route   DELETE /api/tournaments/:id/teams/:teamId
+exports.removeTeamFromTournament = async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+    if (!tournament) {
+      return res.status(404).json({ success: false, message: 'Tournament not found' });
+    }
+
+    if (tournament.organizerId.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'You are not authorized to modify this tournament' });
+    }
+
+    tournament.teams = tournament.teams.filter(t => t.toString() !== req.params.teamId);
+    await tournament.save();
+    
+    // Also remove tournamentId from the Team model if it was there
+    const Team = require('../models/Team');
+    const team = await Team.findById(req.params.teamId);
+    if (team) {
+      team.tournamentIds = team.tournamentIds.filter(tid => tid.toString() !== req.params.id);
+      await team.save();
+    }
+
+    await delCache('tournaments:all');
+    res.json({ success: true, message: 'Team removed successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

@@ -4,9 +4,10 @@ import api from '../services/api';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import LiveIndicator from '../components/LiveIndicator';
-import { HiOutlineRewind, HiOutlineSwitchHorizontal, HiOutlineChevronRight } from 'react-icons/hi';
+import { HiOutlineRewind, HiOutlineSwitchHorizontal, HiOutlineChevronRight, HiOutlineX } from 'react-icons/hi';
 import { MdSportsCricket, MdPersonAdd } from 'react-icons/md';
 import VictoryOverlay from '../components/VictoryOverlay';
+import CustomDialog from '../components/CustomDialog';
 
 const DISMISSAL_TYPES = [
   { value: 'BOWLED',            label: 'Bowled',                       icon: '🎯', desc: 'Ball hits the stumps', prefix: 'b' },
@@ -138,6 +139,9 @@ const LiveScoringPage = () => {
   const isFreeHit = lastBall?.type === 'no-ball';
   const isAllOut = activeScore?.wickets >= (match?.playersPerTeam || 11) - 1;
 
+  // Custom Dialog State
+  const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'confirm', onConfirm: () => {} });
+
   const updateScore = async (runs, type = 'normal', description = '', dismissalType = null, dismissalDesc = '') => {
     if (!activeTeamId || updating) return;
     if (!activeScore?.strikerId || !activeScore?.currentBowlerId) {
@@ -175,13 +179,33 @@ const LiveScoringPage = () => {
         setShowCelebration(true);
       }
 
-      if (type === 'wicket' && !isAllOut) {
+      const newlyAllOut = newScore.wickets >= (match?.playersPerTeam || 11) - 1;
+
+      if (type === 'wicket' && !newlyAllOut) {
         setShowBatsmanModal(true);
         setSelectingType('striker');
       }
 
+      // Check if innings ended (All out or max overs reached)
+      if (newlyAllOut || (newScore.ballByBall.filter(b => b.type !== 'wide' && b.type !== 'no-ball').length >= match.totalOvers * 6)) {
+        if (match.currentInnings === 1 && match.status !== 'completed') {
+           setDialog({
+            isOpen: true,
+            title: newlyAllOut ? 'ALL OUT!' : 'Innings Completed!',
+            message: newlyAllOut ? 'The batting team is all out. Time to swap innings.' : 'The maximum overs for this innings have been bowled. Time to swap innings.',
+            type: 'confirm',
+            onConfirm: () => {
+              setDialog(prev => ({ ...prev, isOpen: false }));
+              handleSwapInnings();
+            }
+          });
+        } else if (match.status === 'completed') {
+           // Celebration already triggered in auto-end block
+        }
+      }
+
       // Check if over completed (server will set currentBowlerId to null)
-      if (!newScore.currentBowlerId && newScore.wickets < 10) {
+      if (!newScore.currentBowlerId && newScore.wickets < (match?.playersPerTeam || 11) - 1 && !newlyAllOut) {
         const legalBalls = newScore.ballByBall.filter(b => b.type !== 'wide' && b.type !== 'no-ball').length;
         // Don't pop modal if innings max overs reached
         if (legalBalls < match.totalOvers * 6) {
@@ -189,7 +213,13 @@ const LiveScoringPage = () => {
         }
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update score');
+      setDialog({
+        isOpen: true,
+        title: 'Score Update Failed',
+        message: err.response?.data?.message || 'Failed to update score',
+        type: 'alert',
+        onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+      });
     } finally {
       setUpdating(false);
     }
@@ -199,7 +229,13 @@ const LiveScoringPage = () => {
   const handleWicketPress = () => {
     if (!activeTeamId || updating) return;
     if (!activeScore?.strikerId || !activeScore?.currentBowlerId) {
-      alert('Please select striker and bowler first');
+      setDialog({
+        isOpen: true,
+        title: 'Missing Players',
+        message: 'Please select both a striker and a bowler before recording a wicket.',
+        type: 'alert',
+        onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+      });
       return;
     }
     setSelectedDismissalType(null);
@@ -210,7 +246,13 @@ const LiveScoringPage = () => {
   // Confirmed from dismissal modal
   const confirmDismissal = () => {
     if (!selectedDismissalType) {
-      alert('Please select a dismissal type');
+      setDialog({
+        isOpen: true,
+        title: 'Selection Required',
+        message: 'Please select a dismissal mode to confirm the wicket.',
+        type: 'alert',
+        onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+      });
       return;
     }
 
@@ -253,7 +295,13 @@ const LiveScoringPage = () => {
       setScores(prev => prev.map(s => s.teamId.toString() === activeTeamId.toString() ? updatedScore : s));
       setShowBatsmanModal(false);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to set batsman');
+      setDialog({
+        isOpen: true,
+        title: 'Error',
+        message: err.response?.data?.message || 'Failed to set batsman',
+        type: 'alert',
+        onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+      });
     }
   };
 
@@ -266,18 +314,37 @@ const LiveScoringPage = () => {
       setScores(prev => prev.map(s => s.teamId === activeTeamId ? res.data.data : s));
       setShowBowlerModal(false);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to set bowler');
+      setDialog({
+        isOpen: true,
+        title: 'Error',
+        message: err.response?.data?.message || 'Failed to set bowler',
+        type: 'alert',
+        onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+      });
     }
   };
 
-  const handleSwapInnings = async () => {
-    if (!window.confirm('Are you sure you want to swap innings?')) return;
-    try {
-      await api.post(`/matches/${id}/swap-innings`);
-      fetchMatch();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to swap innings');
-    }
+  const handleSwapInnings = () => {
+    setDialog({
+      isOpen: true,
+      title: 'Swap Innings?',
+      message: 'Are you sure you want to swap innings now? This will start the second innings for the opposing team.',
+      onConfirm: async () => {
+        try {
+          await api.post(`/matches/${id}/swap-innings`);
+          setDialog(prev => ({ ...prev, isOpen: false }));
+          fetchMatch();
+        } catch (err) {
+          setDialog({
+            isOpen: true,
+            title: 'Error',
+            message: err.response?.data?.message || 'Failed to swap innings',
+            type: 'alert',
+            onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+          });
+        }
+      }
+    });
   };
 
   const undoLastBall = async () => {
@@ -287,26 +354,54 @@ const LiveScoringPage = () => {
       const res = await api.post(`/matches/${id}/undo`, { teamId: activeTeamId });
       setScores(prev => prev.map(s => s.teamId === activeTeamId ? res.data.data : s));
     } catch (err) {
-      alert(err.response?.data?.message || 'Nothing to undo');
+      setDialog({
+        isOpen: true,
+        title: 'Undo Error',
+        message: err.response?.data?.message || 'Nothing to undo',
+        type: 'alert',
+        onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+      });
     } finally {
       setUpdating(false);
     }
   };
 
-  const completeMatch = async () => {
+  const completeMatch = () => {
     const s1 = scores.find(s => s.teamId === match.team1Id?._id);
     const s2 = scores.find(s => s.teamId === match.team2Id?._id);
     let winnerId = null;
     if (s1 && s2) {
       winnerId = s1.runs > s2.runs ? match.team1Id._id : s2.runs > s1.runs ? match.team2Id._id : null;
     }
-    if (!window.confirm('Complete and end this match?')) return;
-    try {
-      await api.post(`/matches/${id}/complete`, { winnerId });
-      navigate(`/match/${id}/summary`);
-    } catch (err) {
-      alert('Failed to complete match');
-    }
+
+    setDialog({
+      isOpen: true,
+      title: 'Complete Match?',
+      message: 'Are you sure you want to end and finalize the match results?',
+      onConfirm: async () => {
+        try {
+          await api.post(`/matches/${id}/complete`, { winnerId });
+          setDialog({
+            isOpen: true,
+            title: 'Match Completed!',
+            message: 'The match results have been finalized.',
+            type: 'alert',
+            onConfirm: () => {
+              setDialog(prev => ({ ...prev, isOpen: false }));
+              navigate(`/match/${id}`);
+            }
+          });
+        } catch (err) {
+          setDialog({
+            isOpen: true,
+            title: 'Error',
+            message: 'Failed to complete match',
+            type: 'alert',
+            onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+          });
+        }
+      }
+    });
   };
 
   // Helper to get player stats from scoreRecord
@@ -1036,6 +1131,16 @@ const LiveScoringPage = () => {
           </div>
         </div>
       )}
+
+      {/* Reusable Dialog */}
+      <CustomDialog 
+        isOpen={dialog.isOpen}
+        title={dialog.title}
+        message={dialog.message}
+        type={dialog.type}
+        onConfirm={dialog.onConfirm}
+        onCancel={() => setDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

@@ -31,7 +31,13 @@ const tournamentSchema = new mongoose.Schema({
     required: [true, 'Players per team is required'],
     default: 11,
     min: 2,
-    max: 11,
+    max: 22,
+  },
+  defaultOvers: {
+    type: Number,
+    required: [true, 'Default overs is required'],
+    default: 20,
+    min: 1,
   },
   status: {
     type: String,

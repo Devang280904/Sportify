@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { HiOutlineTrash, HiOutlineDownload, HiOutlineUpload, HiOutlineUserAdd, HiOutlineX, HiOutlineInformationCircle } from 'react-icons/hi';
+import { HiOutlineTrash, HiOutlineDownload, HiOutlineUpload, HiOutlineUserAdd, HiOutlineX, HiOutlineInformationCircle, HiOutlinePencil, HiOutlineCheck } from 'react-icons/hi';
+import CustomDialog from '../components/CustomDialog';
 
 const TeamDetailPage = () => {
   const { id } = useParams();
@@ -12,6 +13,14 @@ const TeamDetailPage = () => {
   const [saving, setSaving] = useState(false);
   const [showTournamentInfo, setShowTournamentInfo] = useState(false);
   
+  // Custom Dialog States
+  const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'confirm', onConfirm: () => {} });
+
+  // Edit Team States
+  const [showEditTeam, setShowEditTeam] = useState(false);
+  const [editTeamName, setEditTeamName] = useState('');
+  const [editLogoURL, setEditLogoURL] = useState('');
+  const [showDeletePlayerModal, setShowDeletePlayerModal] = useState(null);
 
   // Manual Player Add States
   const [showManualForm, setShowManualForm] = useState(false);
@@ -35,20 +44,43 @@ const TeamDetailPage = () => {
     }
   };
 
-  const handleRemovePlayer = async (playerId) => {
-    if (!confirm('Remove this player?')) return;
-    try {
-      await api.delete(`/teams/${id}/players/${playerId}`);
-      fetchTeam();
-    } catch (err) {
-      alert('Failed to remove player');
-    }
+  const handleRemovePlayer = (playerId) => {
+    setDialog({
+      isOpen: true,
+      title: 'Remove Player?',
+      message: 'Are you sure you want to remove this player from the squad?',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await api.delete(`/teams/${id}/players/${playerId}`);
+          fetchTeam();
+          setDialog(prev => ({ ...prev, isOpen: false }));
+        } catch (err) {
+          setDialog({
+            isOpen: true,
+            title: 'Error',
+            message: 'Failed to remove player from squad',
+            type: 'alert',
+            onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+          });
+        }
+      }
+    });
   };
 
   const handleAddManualPlayer = async (e) => {
     e.preventDefault();
     const currentMaxPlayers = team?.tournamentIds?.length > 0 ? Math.max(...team.tournamentIds.map(t => t.playersPerTeam || 11)) : 11;
-    if (team.players.length >= currentMaxPlayers) return alert(`Team already has the maximum ${currentMaxPlayers} players`);
+    if (team.players.length >= currentMaxPlayers) {
+      setDialog({
+        isOpen: true,
+        title: 'Limit Reached',
+        message: `Team already has the maximum ${currentMaxPlayers} players.`,
+        type: 'alert',
+        onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+      });
+      return;
+    }
 
     
     setSaving(true);
@@ -58,7 +90,13 @@ const TeamDetailPage = () => {
       setShowManualForm(false);
       fetchTeam();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to add player');
+      setDialog({
+        isOpen: true,
+        title: 'Error',
+        message: err.response?.data?.message || 'Failed to add player',
+        type: 'alert',
+        onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+      });
     } finally {
       setSaving(false);
     }
@@ -88,6 +126,37 @@ const TeamDetailPage = () => {
     window.URL.revokeObjectURL(url);
   };
 
+  const handleUpdateTeam = async (e) => {
+    e.preventDefault();
+    if (!editTeamName.trim()) return;
+    setSaving(true);
+    try {
+      await api.put(`/teams/${id}`, { 
+        teamName: editTeamName.trim(),
+        logoURL: editLogoURL.trim()
+      });
+      setShowEditTeam(false);
+      fetchTeam();
+      setDialog({
+        isOpen: true,
+        title: 'Success',
+        message: 'Team details updated successfully!',
+        type: 'alert',
+        onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+      });
+    } catch (err) {
+      setDialog({
+        isOpen: true,
+        title: 'Error',
+        message: err.response?.data?.message || 'Failed to update team details',
+        type: 'alert',
+        onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -109,16 +178,35 @@ const TeamDetailPage = () => {
       }
 
       if (players.length === 0) {
-        return alert('No valid player data found in CSV');
+        setDialog({
+          isOpen: true,
+          title: 'Empty File',
+          message: 'No valid player data found in the selected CSV.',
+          type: 'alert',
+          onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+        });
+        return;
       }
 
       setSaving(true);
       try {
         await api.post(`/teams/${id}/players/upload`, { players });
         fetchTeam();
-        alert(`${players.length} players uploaded successfully`);
+        setDialog({
+          isOpen: true,
+          title: 'Success',
+          message: `${players.length} players uploaded successfully!`,
+          type: 'alert',
+          onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+        });
       } catch (err) {
-        alert(err.response?.data?.message || 'Failed to upload players');
+        setDialog({
+          isOpen: true,
+          title: 'Error',
+          message: err.response?.data?.message || 'Failed to upload players',
+          type: 'alert',
+          onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+        });
       } finally {
         setSaving(false);
         e.target.value = ''; // Reset file input
@@ -159,6 +247,11 @@ const TeamDetailPage = () => {
     ? Math.max(...team.tournamentIds.map(t => t.playersPerTeam || 11)) 
     : 11;
 
+  const handleOpenEdit = () => {
+    setEditTeamName(team.teamName);
+    setEditLogoURL(team.logoURL || '');
+    setShowEditTeam(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -170,7 +263,18 @@ const TeamDetailPage = () => {
               {team.teamName?.charAt(0)}
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-txt-primary">{team.teamName}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-txt-primary">{team.teamName}</h1>
+                {canEdit && (
+                  <button 
+                    onClick={handleOpenEdit}
+                    className="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-all"
+                    title="Edit Team Name"
+                  >
+                    <HiOutlinePencil className="text-sm" />
+                  </button>
+                )}
+              </div>
               <div className="flex items-center gap-2 mt-1">
                 <span className={`px-2 py-0.5 rounded text-[11px] uppercase tracking-widest font-bold border ${team.players?.length >= maxPlayers ? 'bg-accent/10 border-accent/20 text-accent' : 'bg-surface-border border-surface-border text-txt-muted'}`}>
                   {team.players?.length || 0}/{maxPlayers} players
@@ -365,6 +469,59 @@ const TeamDetailPage = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Team Modal */}
+      {showEditTeam && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-slide-up">
+            <div className="flex items-center justify-between p-6">
+              <h2 className="text-xl font-black text-txt-primary uppercase tracking-tight">Edit Team Details</h2>
+              <button onClick={() => setShowEditTeam(false)} className="p-1.5 hover:bg-surface rounded-lg transition-colors">
+                <HiOutlineX className="text-xl text-txt-muted" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateTeam} className="px-6 pb-6 space-y-4">
+              <div>
+                <label className="label">Team Name</label>
+                <input
+                  value={editTeamName}
+                  onChange={(e) => setEditTeamName(e.target.value)}
+                  className="input"
+                  placeholder="e.g. Mumbai Indians"
+                  required
+                />
+              </div>
+              <div>
+                <label className="label">Logo URL</label>
+                <input
+                  value={editLogoURL}
+                  onChange={(e) => setEditLogoURL(e.target.value)}
+                  className="input"
+                  placeholder="https://example.com/logo.png"
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowEditTeam(false)} className="btn-outline flex-1 py-3 text-sm font-bold">
+                  Cancel
+                </button>
+                <button type="submit" disabled={saving || !editTeamName.trim()} className="btn-primary flex-1 py-3 text-sm font-black uppercase tracking-widest shadow-lg shadow-primary/20">
+                  {saving ? 'Updating...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reusable Dialog */}
+      <CustomDialog 
+        isOpen={dialog.isOpen}
+        title={dialog.title}
+        message={dialog.message}
+        type={dialog.type}
+        onConfirm={dialog.onConfirm}
+        onCancel={() => setDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

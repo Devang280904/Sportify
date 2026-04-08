@@ -436,3 +436,53 @@ exports.uploadPlayers = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Update team details
+// @route   PUT /api/teams/:id
+exports.updateTeam = async (req, res) => {
+  try {
+    const { teamName, captainId, logoURL } = req.body;
+    const teamId = req.params.id;
+
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ success: false, message: 'Team not found' });
+    }
+
+    // Authorization: Creator or Tournament Organizer
+    const isCreator = team.createdBy?.toString() === req.user.id;
+    let isOrganizer = false;
+    
+    // Check if the current user is an organizer of any tournament this team belongs to
+    if (team.tournamentIds && team.tournamentIds.length > 0) {
+      const tournaments = await Tournament.find({ 
+        _id: { $in: team.tournamentIds },
+        organizerId: req.user.id
+      });
+      if (tournaments.length > 0) isOrganizer = true;
+    }
+
+    if (!isCreator && !isOrganizer) {
+      return res.status(403).json({ success: false, message: 'Not authorized to update this team' });
+    }
+
+    if (teamName) team.teamName = teamName.trim();
+    if (captainId) team.captainId = captainId;
+    if (logoURL !== undefined) team.logoURL = logoURL;
+
+    await team.save();
+
+    const updatedTeam = await Team.findById(teamId)
+      .populate('players')
+      .populate('captainId', 'name email')
+      .populate('createdBy', 'name email')
+      .populate({
+        path: 'tournamentIds',
+        select: 'name organizerId playersPerTeam'
+      });
+
+    res.json({ success: true, data: updatedTeam });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

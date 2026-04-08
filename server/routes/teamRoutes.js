@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   createTeam, getTeam, getTeams, addPlayer, removePlayer, deleteTeam, uploadPlayers,
-  getMyTeams, linkTeam, unlinkTeam
+  getMyTeams, linkTeam, unlinkTeam, updateTeam
 } = require('../controllers/teamController');
 const { protect } = require('../middlewares/auth');
 
@@ -15,6 +15,7 @@ router.route('/')
 
 router.route('/:id')
   .get(protect, getTeam)
+  .put(protect, updateTeam)
   .delete(protect, deleteTeam);
 
 router.post('/:id/unlink', protect, unlinkTeam);

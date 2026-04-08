@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { HiOutlinePlus, HiOutlineX, HiOutlineCalendar, HiOutlineTrash, HiOutlineSearch } from 'react-icons/hi';
+import CustomDialog from '../components/CustomDialog';
 
 const TournamentsPage = () => {
   const { user } = useAuth();
@@ -14,10 +15,11 @@ const TournamentsPage = () => {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('my');
   const [filter, setFilter] = useState('all');
-  const [form, setForm] = useState({ name: '', startDate: '', endDate: '', playersPerTeam: 11 });
+  const [form, setForm] = useState({ name: '', startDate: '', endDate: '', playersPerTeam: 11, defaultOvers: 20 });
   const [saving, setSaving] = useState(false);
   const [dateError, setDateError] = useState('');
   const [todayDate, setTodayDate] = useState('');
+  const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'confirm', onConfirm: () => {} });
 
   // Calculate today's date in YYYY-MM-DD format (IST / Local safe)
   useEffect(() => {
@@ -75,23 +77,38 @@ const TournamentsPage = () => {
       return;
     }
 
-    setSaving(true);
-    try {
-      const res = await api.post('/tournaments', form);
-      setShowModal(false);
-      setForm({ name: '', startDate: '', endDate: '', playersPerTeam: 11 });
-      setDateError('');
-      // Redirect to the new tournament detail page to add teams
-      if (res.data.data?._id) {
-        navigate(`/tournaments/${res.data.data._id}`);
-      } else {
-        fetchTournaments();
+    setDialog({
+      isOpen: true,
+      title: 'Create Tournament?',
+      message: `Are you sure you want to create "${form.name}"?`,
+      type: 'confirm',
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          const res = await api.post('/tournaments', form);
+          setShowModal(false);
+          setForm({ name: '', startDate: '', endDate: '', playersPerTeam: 11, defaultOvers: 20 });
+          setDateError('');
+          // Redirect to the new tournament detail page to add teams
+          if (res.data.data?._id) {
+            navigate(`/tournaments/${res.data.data._id}`);
+          } else {
+            fetchTournaments();
+          }
+        } catch (err) {
+          setDialog({
+            isOpen: true,
+            title: 'Error',
+            message: err.response?.data?.message || err.message || 'Failed to create tournament',
+            type: 'alert',
+            onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+          });
+        } finally {
+          setSaving(false);
+          setDialog(prev => ({ ...prev, isOpen: false }));
+        }
       }
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to create tournament');
-    } finally {
-      setSaving(false);
-    }
+    });
   };
 
   const handleDateChange = (field, value) => {
@@ -103,25 +120,40 @@ const TournamentsPage = () => {
     setDateError(error);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!showDeleteModal) return;
-    setSaving(true);
-    try {
-      await api.delete(`/tournaments/${showDeleteModal._id}`);
-      setShowDeleteModal(null);
-      fetchTournaments();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete tournament');
-    } finally {
-      setSaving(false);
-    }
+    setDialog({
+      isOpen: true,
+      title: 'Delete Tournament?',
+      message: `Are you sure you want to delete "${showDeleteModal.name}"? This action cannot be undone and will delete all related matches and scores.`,
+      type: 'danger',
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await api.delete(`/tournaments/${showDeleteModal._id}`);
+          setShowDeleteModal(null);
+          fetchTournaments();
+        } catch (err) {
+          setDialog({
+            isOpen: true,
+            title: 'Error',
+            message: err.response?.data?.message || 'Failed to delete tournament',
+            type: 'alert',
+            onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+          });
+        } finally {
+          setSaving(false);
+          setDialog(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
   };
 
   const canDelete = (tournament) => {
     if (!user) return false;
-    const userId = user.id || user._id;
-    const organizerId = tournament.organizerId?._id || tournament.organizerId;
-    return userId && organizerId && userId.toString() === organizerId.toString();
+    const userId = (user.id || user._id)?.toString();
+    const organizerId = (tournament.organizerId?._id || tournament.organizerId)?.toString();
+    return userId && organizerId && userId === organizerId;
   };
 
   const getEffectiveStatus = (t) => {
@@ -278,10 +310,17 @@ const TournamentsPage = () => {
                     className="input" required />
                 </div>
               </div>
-              <div>
-                <label className="label">Players per Team</label>
-                <input type="number" min="2" max="11" value={form.playersPerTeam} onChange={e => setForm({ ...form, playersPerTeam: Number(e.target.value) })}
-                  className="input" required />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Players per Team</label>
+                  <input type="number" min="2" max="22" value={form.playersPerTeam} onChange={e => setForm({ ...form, playersPerTeam: Number(e.target.value) })}
+                    className="input" required />
+                </div>
+                <div>
+                  <label className="label">Overs per Match</label>
+                  <input type="number" min="1" max="50" value={form.defaultOvers} onChange={e => setForm({ ...form, defaultOvers: Number(e.target.value) })}
+                    className="input" required />
+                </div>
               </div>
               {dateError && (
                 <div className="bg-danger/10 border border-danger/20 text-danger text-sm rounded-lg p-3">
@@ -296,37 +335,15 @@ const TournamentsPage = () => {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-scale-up">
-            <div className="w-16 h-16 rounded-full bg-danger/10 flex items-center justify-center mx-auto mb-4">
-              <HiOutlineTrash className="text-3xl text-danger" />
-            </div>
-            <h2 className="text-xl font-bold text-center text-txt-primary mb-2">Delete Tournament?</h2>
-            <p className="text-center text-txt-secondary mb-6">
-              Are you sure you want to delete <span className="font-bold text-txt-primary">{showDeleteModal.name}</span>?<br />
-              <span className="text-danger font-medium mt-1 inline-block">This action will also permanently delete all associated teams, matches, and score records. This cannot be undone.</span>
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDeleteModal(null)}
-                disabled={saving}
-                className="btn-outline flex-1 py-2.5"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={saving}
-                className="btn-danger flex-1 py-2.5 shadow-lg shadow-danger/30"
-              >
-                {saving ? 'Deleting...' : 'Yes, Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Reusable Dialog */}
+      <CustomDialog 
+        isOpen={dialog.isOpen}
+        title={dialog.title}
+        message={dialog.message}
+        type={dialog.type}
+        onConfirm={dialog.onConfirm}
+        onCancel={() => setDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { HiOutlineCalendar, HiOutlineUserGroup, HiOutlinePlus, HiOutlineX, HiOutlineSearch, HiOutlineClipboardCopy, HiOutlineCheck, HiOutlineTrash, HiOutlineSun, HiOutlineMoon } from 'react-icons/hi';
+import { HiOutlineCalendar, HiOutlineUserGroup, HiOutlinePlus, HiOutlineX, HiOutlineSearch, HiOutlineClipboardCopy, HiOutlineCheck, HiOutlineTrash, HiOutlineSun, HiOutlineMoon, HiOutlinePencil } from 'react-icons/hi';
 import LiveIndicator from '../components/LiveIndicator';
+import CustomDialog from '../components/CustomDialog';
 
 const TournamentDetailPage = () => {
   const { id } = useParams();
@@ -25,6 +26,13 @@ const TournamentDetailPage = () => {
   const [toast, setToast] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteSaving, setDeleteSaving] = useState(false);
+  
+  // Custom Dialog States
+  const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'confirm', onConfirm: () => {} });
+
+  // Edit Tournament States
+  const [showEditTournament, setShowEditTournament] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', startDate: '', endDate: '', playersPerTeam: 11, defaultOvers: 20 });
 
   useEffect(() => {
     fetchData();
@@ -116,6 +124,26 @@ const TournamentDetailPage = () => {
     }
   };
 
+  const handleRemoveTeam = async (teamId, teamName) => {
+    setDialog({
+      isOpen: true,
+      title: 'Remove Team?',
+      message: `Are you sure you want to remove "${teamName}" from this tournament?`,
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await api.delete(`/tournaments/${id}/teams/${teamId}`);
+          showToast(`Team "${teamName}" removed successfully!`);
+          fetchData();
+        } catch (err) {
+          showToast(err.response?.data?.message || 'Failed to remove team', 'error');
+        } finally {
+          setDialog(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
+  };
+
   // Filter my teams by search query
   const filteredMyTeams = myTeams.filter((t) =>
     t.teamName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -143,18 +171,50 @@ const TournamentDetailPage = () => {
 
   const isOrganizer = user && (user._id === tournament?.organizerId?._id || user.id === tournament?.organizerId?._id);
 
-  const handleDeleteTournament = async () => {
-    setDeleteSaving(true);
-    try {
-      await api.delete(`/tournaments/${id}`);
-      showToast('Tournament deleted successfully!', 'success');
-      setTimeout(() => navigate('/tournaments'), 1500);
-    } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to delete tournament', 'error');
-    } finally {
-      setDeleteSaving(false);
-      setShowDeleteModal(false);
-    }
+  const handleDeleteTournament = () => {
+    setDialog({
+      isOpen: true,
+      title: 'Delete Tournament?',
+      message: 'Are you sure you want to delete this tournament? This will permanently remove all associated matches, teams, and scores. This cannot be undone.',
+      type: 'danger',
+      onConfirm: async () => {
+        setDeleteSaving(true);
+        try {
+          await api.delete(`/tournaments/${id}`);
+          showToast('Tournament deleted successfully!', 'success');
+          setTimeout(() => navigate('/tournaments'), 1500);
+        } catch (err) {
+          showToast(err.response?.data?.message || 'Failed to delete tournament', 'error');
+        } finally {
+          setDeleteSaving(false);
+          setDialog(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
+  };
+
+  const handleUpdateTournament = async (e) => {
+    e.preventDefault();
+    setDialog({
+      isOpen: true,
+      title: 'Save Changes?',
+      message: 'Are you sure you want to save these changes to the tournament details?',
+      type: 'confirm',
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await api.put(`/tournaments/${id}`, editForm);
+          setShowEditTournament(false);
+          fetchData();
+          showToast('Tournament updated successfully!');
+        } catch (err) {
+          showToast(err.response?.data?.message || 'Failed to update tournament', 'error');
+        } finally {
+          setSaving(false);
+          setDialog(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
   };
 
   if (loading) {
@@ -203,7 +263,27 @@ const TournamentDetailPage = () => {
       <div className="card">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-txt-primary">{tournament.name}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-txt-primary">{tournament.name}</h1>
+              {isOrganizer && (
+                <button 
+                  onClick={() => { 
+                    setShowEditTournament(true); 
+                    setEditForm({ 
+                      name: tournament.name, 
+                      startDate: tournament.startDate.slice(0, 10), 
+                      endDate: tournament.endDate.slice(0, 10),
+                      playersPerTeam: tournament.playersPerTeam || 11,
+                      defaultOvers: tournament.defaultOvers || 20
+                    }); 
+                  }}
+                  className="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-all"
+                  title="Edit Tournament"
+                >
+                  <HiOutlinePencil className="text-sm" />
+                </button>
+              )}
+            </div>
             <p className="text-sm text-txt-muted mt-1">created by: <span className="font-semibold">{tournament.organizerId?.name}</span></p>
             <div className="flex items-center gap-4 mt-2 text-sm text-txt-secondary">
               <span className="flex items-center gap-1">
@@ -264,17 +344,31 @@ const TournamentDetailPage = () => {
         {tournament.teams?.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {tournament.teams.map(team => (
-              <Link key={team._id} to={`/teams/${team._id}`} className="card hover:shadow-card-lg group animate-slide-up">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                    {team.teamName?.charAt(0)}
+              <div key={team._id} className="relative group/team-card">
+                <Link to={`/teams/${team._id}`} className="card hover:shadow-card-lg block animate-slide-up h-full">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                      {team.teamName?.charAt(0)}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-txt-primary group-hover:text-primary">{team.teamName}</h3>
+                      <p className="text-xs text-txt-muted">{team.players?.length || 0} players</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-txt-primary group-hover:text-primary">{team.teamName}</h3>
-                    <p className="text-xs text-txt-muted">{team.players?.length || 0} players</p>
-                  </div>
-                </div>
-              </Link>
+                </Link>
+                {isOrganizer && !isTournamentFinished && (
+                  <button 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleRemoveTeam(team._id, team.teamName);
+                    }}
+                    className="absolute top-2 right-2 p-1.5 opacity-0 group-hover/team-card:opacity-100 transition-opacity bg-danger/10 text-danger hover:bg-danger hover:text-white rounded-lg"
+                    title="Remove Team"
+                  >
+                    <HiOutlineX className="text-sm" />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         ) : (
@@ -618,7 +712,7 @@ const TournamentDetailPage = () => {
               <p className="text-sm text-txt-secondary">Delete this tournament and all associated data</p>
             </div>
             <button 
-              onClick={() => setShowDeleteModal(true)}
+              onClick={handleDeleteTournament}
               className="btn-danger inline-flex items-center space-x-2 text-sm"
             >
               <HiOutlineTrash /> <span>Delete Tournament</span>
@@ -627,44 +721,91 @@ const TournamentDetailPage = () => {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-scale-up">
-            <div className="w-16 h-16 rounded-full bg-danger/10 flex items-center justify-center mx-auto mb-4">
-              <HiOutlineTrash className="text-3xl text-danger" />
-            </div>
-            <h2 className="text-xl font-bold text-center text-txt-primary mb-2">Delete Tournament?</h2>
-            <p className="text-center text-txt-secondary mb-6">
-              Are you sure you want to delete <span className="font-bold text-txt-primary">{tournament?.name}</span>?<br />
-              <span className="text-danger font-medium mt-1 inline-block">This action will permanently delete all teams, matches, and score records. This cannot be undone.</span>
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                disabled={deleteSaving}
-                className="btn-outline flex-1 py-2.5"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteTournament}
-                disabled={deleteSaving}
-                className="btn-danger flex-1 py-2.5 shadow-lg shadow-danger/30"
-              >
-                {deleteSaving ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    Deleting...
-                  </span>
-                ) : (
-                  'Delete Tournament'
-                )}
+      {/* Edit Tournament Modal */}
+      {showEditTournament && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-slide-up">
+            <div className="flex items-center justify-between p-6">
+              <h2 className="text-xl font-black text-txt-primary uppercase tracking-tight">Edit Tournament</h2>
+              <button onClick={() => setShowEditTournament(false)} className="p-1.5 hover:bg-surface rounded-lg transition-colors">
+                <HiOutlineX className="text-xl text-txt-muted" />
               </button>
             </div>
+            <form onSubmit={handleUpdateTournament} className="px-6 pb-6 space-y-4">
+              <div>
+                <label className="label">Tournament Name</label>
+                <input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                  className="input" placeholder="e.g. Summer Smash 2024" required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Start Date</label>
+                  <input
+                    type="date"
+                    value={editForm.startDate}
+                    onChange={(e) => setEditForm({...editForm, startDate: e.target.value})}
+                    className="input" required
+                  />
+                </div>
+                <div>
+                  <label className="label">End Date</label>
+                  <input
+                    type="date"
+                    value={editForm.endDate}
+                    onChange={(e) => setEditForm({...editForm, endDate: e.target.value})}
+                    className="input" required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Players Per Team</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="25"
+                    value={editForm.playersPerTeam}
+                    onChange={(e) => setEditForm({...editForm, playersPerTeam: parseInt(e.target.value)})}
+                    className="input" required
+                  />
+                </div>
+                <div>
+                  <label className="label">Overs per Match</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={editForm.defaultOvers}
+                    onChange={(e) => setEditForm({...editForm, defaultOvers: parseInt(e.target.value)})}
+                    className="input" required
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowEditTournament(false)} className="btn-outline flex-1 py-3 text-sm font-bold">
+                  Cancel
+                </button>
+                <button type="submit" disabled={saving} className="btn-primary flex-1 py-3 text-sm font-black uppercase tracking-widest shadow-lg shadow-primary/20">
+                  {saving ? 'Updating...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
+
+      {/* Reusable Dialog */}
+      <CustomDialog 
+        isOpen={dialog.isOpen}
+        title={dialog.title}
+        message={dialog.message}
+        type={dialog.type}
+        onConfirm={dialog.onConfirm}
+        onCancel={() => setDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

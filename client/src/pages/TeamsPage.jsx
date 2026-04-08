@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { HiOutlinePlus, HiOutlineX, HiOutlineTrash, HiOutlineSearch } from 'react-icons/hi';
+import CustomDialog from '../components/CustomDialog';
 
 const TeamsPage = () => {
   const { user } = useAuth();
@@ -16,6 +17,7 @@ const TeamsPage = () => {
   const [form, setForm] = useState({ teamName: '', tournamentId: searchParams.get('tournamentId') || '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [saving, setSaving] = useState(false);
+  const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'confirm', onConfirm: () => {} });
 
   useEffect(() => {
     if (searchParams.get('create') === 'true') {
@@ -51,24 +53,45 @@ const TeamsPage = () => {
       setForm({ teamName: '', tournamentId: '' });
       fetchData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to create team');
+      setDialog({
+        isOpen: true,
+        title: 'Error',
+        message: err.response?.data?.message || 'Failed to create team',
+        type: 'alert',
+        onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!showDeleteModal) return;
-    setSaving(true);
-    try {
-      await api.delete(`/teams/${showDeleteModal._id}`);
-      setShowDeleteModal(null);
-      fetchData();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete team');
-    } finally {
-      setSaving(false);
-    }
+    setDialog({
+      isOpen: true,
+      title: 'Delete Team?',
+      message: `Are you sure you want to delete "${showDeleteModal.teamName}"? This will also remove all player data.`,
+      type: 'danger',
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await api.delete(`/teams/${showDeleteModal._id}`);
+          setShowDeleteModal(null);
+          fetchData();
+          setDialog(prev => ({ ...prev, isOpen: false }));
+        } catch (err) {
+          setDialog({
+            isOpen: true,
+            title: 'Error',
+            message: err.response?.data?.message || 'Failed to delete team',
+            type: 'alert',
+            onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+          });
+        } finally {
+          setSaving(false);
+        }
+      }
+    });
   };
 
   const canDelete = (team) => {

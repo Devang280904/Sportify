@@ -64,7 +64,7 @@ const TournamentDetailPage = () => {
       const res = await api.get('/teams');
       // Filter out teams that already belong to THIS tournament
       const filtered = res.data.data.filter(
-        (t) => !t.tournamentIds?.some(tid => (tid._id || tid) === id)
+        (t) => !t.tournamentIds?.some(tid => (tid._id || tid)?.toString() === id?.toString())
       );
       setMyTeams(filtered);
     } catch (err) {
@@ -169,7 +169,10 @@ const TournamentDetailPage = () => {
     return 'live';
   };
 
-  const isOrganizer = user && (user._id === tournament?.organizerId?._id || user.id === tournament?.organizerId?._id);
+  const isOrganizer = user && (user._id?.toString() === tournament?.organizerId?._id?.toString() || 
+                               user.id?.toString() === tournament?.organizerId?._id?.toString() ||
+                               user._id?.toString() === tournament?.organizerId?.toString() ||
+                               user.id?.toString() === tournament?.organizerId?.toString());
 
   const handleDeleteTournament = () => {
     setDialog({

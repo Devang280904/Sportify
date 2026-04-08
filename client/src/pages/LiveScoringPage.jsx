@@ -50,6 +50,7 @@ const LiveScoringPage = () => {
   const [showDismissalModal, setShowDismissalModal] = useState(false);
   const [selectedDismissalType, setSelectedDismissalType] = useState(null);
   const [selectedFielderId, setSelectedFielderId] = useState(null);
+  const [selectedOutBatsmanId, setSelectedOutBatsmanId] = useState(null);
 
   // Celebration state
   const [celebration, setCelebration] = useState({ type: null, teamId: null });
@@ -116,13 +117,20 @@ const LiveScoringPage = () => {
         setActiveTeamId(res.data.data.scores[0].teamId.toString());
       }
 
-      // Fetch player lists for teams
-      const [t1Res, t2Res] = await Promise.all([
-        api.get(`/teams/${matchData.team1Id?._id}`),
-        api.get(`/teams/${matchData.team2Id?._id}`),
-      ]);
-      setTeam1Players(t1Res.data.data.players || []);
-      setTeam2Players(t2Res.data.data.players || []);
+      // Priority: match.team1Players (selected squad) > team.players (full squad fallback)
+      if (matchData.team1Players?.length > 0) {
+        setTeam1Players(matchData.team1Players);
+      } else {
+        const t1Res = await api.get(`/teams/${matchData.team1Id?._id || matchData.team1Id}`);
+        setTeam1Players(t1Res.data.data.players || []);
+      }
+
+      if (matchData.team2Players?.length > 0) {
+        setTeam2Players(matchData.team2Players);
+      } else {
+        const t2Res = await api.get(`/teams/${matchData.team2Id?._id || matchData.team2Id}`);
+        setTeam2Players(t2Res.data.data.players || []);
+      }
 
     } catch (err) {
       console.error(err);
@@ -136,14 +144,14 @@ const LiveScoringPage = () => {
   const bowlingTeam = activeTeamId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? match?.team2Id : match?.team1Id;
   const battingPlayers = activeTeamId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? team1Players : team2Players;
   const bowlingPlayers = activeTeamId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? team2Players : team1Players;
-  const lastBall = activeScore?.ballByBall?.[activeScore.ballByBall.length - 1];
+  const lastBall = activeScore?.ballByBall?.[activeScore?.ballByBall?.length - 1];
   const isFreeHit = lastBall?.type === 'no-ball';
   const isAllOut = activeScore?.wickets >= (match?.playersPerTeam || 11) - 1;
 
   // Custom Dialog State
   const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'confirm', onConfirm: () => {} });
 
-  const updateScore = async (runs, type = 'normal', description = '', dismissalType = null, dismissalDesc = '') => {
+  const updateScore = async (runs, type = 'normal', description = '', dismissalType = null, dismissalDesc = '', outBatsmanId = null) => {
     if (!activeTeamId || updating) return;
     if (!activeScore?.strikerId || !activeScore?.currentBowlerId) {
       return;
@@ -158,6 +166,7 @@ const LiveScoringPage = () => {
         description,
         dismissalType: type === 'wicket' ? dismissalType : null,
         dismissalDescription: type === 'wicket' ? dismissalDesc : '',
+        outBatsmanId: type === 'wicket' ? outBatsmanId : null,
       });
       const newScore = res.data.data;
       setScores(prev => prev.map(s => s.teamId === activeTeamId ? newScore : s));
@@ -184,11 +193,12 @@ const LiveScoringPage = () => {
 
       if (type === 'wicket' && !newlyAllOut) {
         setShowBatsmanModal(true);
-        setSelectingType('striker');
+        const updatedScore = res.data.data;
+        setSelectingType(outBatsmanId && outBatsmanId === updatedScore?.nonStrikerId ? 'nonStriker' : 'striker');
       }
 
       // Check if innings ended (All out or max overs reached)
-      if (newlyAllOut || (newScore.ballByBall.filter(b => b.type !== 'wide' && b.type !== 'no-ball').length >= match.totalOvers * 6)) {
+      if (newlyAllOut || (newScore.ballByBall?.filter(b => b.type !== 'wide' && b.type !== 'no-ball').length >= match.totalOvers * 6)) {
         if (match.currentInnings === 1 && match.status !== 'completed') {
            setDialog({
             isOpen: true,
@@ -207,7 +217,7 @@ const LiveScoringPage = () => {
 
       // Check if over completed (server will set currentBowlerId to null)
       if (!newScore.currentBowlerId && newScore.wickets < (match?.playersPerTeam || 11) - 1 && !newlyAllOut) {
-        const legalBalls = newScore.ballByBall.filter(b => b.type !== 'wide' && b.type !== 'no-ball').length;
+        const legalBalls = newScore.ballByBall?.filter(b => b.type !== 'wide' && b.type !== 'no-ball').length;
         // Don't pop modal if innings max overs reached
         if (legalBalls < match.totalOvers * 6) {
           setShowBowlerModal(true);
@@ -241,6 +251,7 @@ const LiveScoringPage = () => {
     }
     setSelectedDismissalType(null);
     setSelectedFielderId(null);
+    setSelectedOutBatsmanId(activeScore?.strikerId);
     setShowDismissalModal(true);
   };
 
@@ -282,7 +293,7 @@ const LiveScoringPage = () => {
 
     setShowDismissalModal(false);
     const isRetiredHurt = selectedDismissalType === 'RETIRED_HURT';
-    updateScore(0, isRetiredHurt ? 'normal' : 'wicket', '', selectedDismissalType, autoDesc);
+    updateScore(0, isRetiredHurt ? 'normal' : 'wicket', '', selectedDismissalType, autoDesc, selectedOutBatsmanId);
   };
 
   const setBatsman = async (playerId, type) => {
@@ -425,7 +436,7 @@ const LiveScoringPage = () => {
 
   const getRestrictedBowler = () => {
     if (!activeScore?.ballByBall?.length) return null;
-    const legalBalls = activeScore.ballByBall.filter(b => b.type !== 'wide' && b.type !== 'no-ball');
+    const legalBalls = (activeScore?.ballByBall || []).filter(b => b.type !== 'wide' && b.type !== 'no-ball');
     const completedOvers = Math.floor(legalBalls.length / 6);
     if (completedOvers === 0) return null;
     // Return the bowler who bowled the final ball of the last completed over
@@ -513,7 +524,7 @@ const LiveScoringPage = () => {
                     }</span>
                   </div>
                 )}
-                {activeScore?.ballByBall?.[activeScore.ballByBall.length - 1]?.type === 'no-ball' && (
+                {activeScore?.ballByBall?.[(activeScore?.ballByBall?.length || 0) - 1]?.type === 'no-ball' && (
                   <div className="mb-2 px-3 py-1 bg-red-600 rounded-full animate-pulse shadow-lg shadow-red-600/40 border border-white/20">
                     <span className="text-[10px] font-black uppercase tracking-widest text-white">FREE HIT</span>
                   </div>
@@ -611,13 +622,13 @@ const LiveScoringPage = () => {
                     <>
                       <div>
                         <p className="font-bold text-sm flex items-center gap-1">
-                          {battingPlayers.find(p => p._id === activeScore.strikerId)?.name} <span className="text-accent">★</span>
+                          {battingPlayers.find(p => p._id === activeScore?.strikerId)?.name} <span className="text-accent">★</span>
                         </p>
-                        <p className="text-[10px] text-txt-muted">SR: {getBattingStat(activeScore.strikerId).strikeRate?.toFixed(1) || 0}</p>
+                        <p className="text-[10px] text-txt-muted">SR: {getBattingStat(activeScore?.strikerId).strikeRate?.toFixed(1) || 0}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-lg text-primary">{getBattingStat(activeScore.strikerId).runs}</p>
-                        <p className="text-[10px] text-txt-muted">{getBattingStat(activeScore.strikerId).ballsFaced} balls</p>
+                        <p className="font-bold text-lg text-primary">{getBattingStat(activeScore?.strikerId).runs}</p>
+                        <p className="text-[10px] text-txt-muted">{getBattingStat(activeScore?.strikerId).ballsFaced} balls</p>
                       </div>
                     </>
                   ) : (
@@ -637,12 +648,12 @@ const LiveScoringPage = () => {
                   {activeScore?.nonStrikerId ? (
                     <>
                       <div>
-                        <p className="font-bold text-sm">{battingPlayers.find(p => p._id === activeScore.nonStrikerId)?.name}</p>
-                        <p className="text-[10px] text-txt-muted">SR: {getBattingStat(activeScore.nonStrikerId).strikeRate?.toFixed(1) || 0}</p>
+                        <p className="font-bold text-sm">{battingPlayers.find(p => p._id === activeScore?.nonStrikerId)?.name}</p>
+                        <p className="text-[10px] text-txt-muted">SR: {getBattingStat(activeScore?.nonStrikerId).strikeRate?.toFixed(1) || 0}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-lg">{getBattingStat(activeScore.nonStrikerId).runs}</p>
-                        <p className="text-[10px] text-txt-muted">{getBattingStat(activeScore.nonStrikerId).ballsFaced} balls</p>
+                        <p className="font-bold text-lg">{getBattingStat(activeScore?.nonStrikerId).runs}</p>
+                        <p className="text-[10px] text-txt-muted">{getBattingStat(activeScore?.nonStrikerId).ballsFaced} balls</p>
                       </div>
                     </>
                   ) : (
@@ -671,15 +682,15 @@ const LiveScoringPage = () => {
                 {activeScore?.currentBowlerId ? (
                   <>
                     <div>
-                      <p className="font-bold text-sm">{bowlingPlayers.find(p => p._id === activeScore.currentBowlerId)?.name}</p>
-                      <p className="text-[10px] text-txt-muted">Econ: {getBowlingStat(activeScore.currentBowlerId).economy?.toFixed(1) || 0}</p>
+                      <p className="font-bold text-sm">{bowlingPlayers.find(p => p._id === activeScore?.currentBowlerId)?.name}</p>
+                      <p className="text-[10px] text-txt-muted">Econ: {getBowlingStat(activeScore?.currentBowlerId).economy?.toFixed(1) || 0}</p>
                       {isOwner && <button onClick={() => setShowBowlerModal(true)} className="text-[10px] text-secondary hover:underline mt-1 font-medium">Change Bowler</button>}
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-lg text-secondary">
-                        {getBowlingStat(activeScore.currentBowlerId).wickets}-{getBowlingStat(activeScore.currentBowlerId).runsConceded}
+                        {getBowlingStat(activeScore?.currentBowlerId).wickets}-{getBowlingStat(activeScore?.currentBowlerId).runsConceded}
                       </p>
-                      <p className="text-[10px] text-txt-muted">{getBowlingStat(activeScore.currentBowlerId).oversBowled} overs</p>
+                      <p className="text-[10px] text-txt-muted">{getBowlingStat(activeScore?.currentBowlerId).oversBowled} overs</p>
                     </div>
                   </>
                 ) : (
@@ -844,6 +855,10 @@ const LiveScoringPage = () => {
         </div>
       )}
 
+      {activeTab === 'graphs' && (
+        <MatchGraphs scores={scores} match={match} />
+      )}
+
       {activeTab === 'squads' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
            {[match.team1Id, match.team2Id].map((team, idx) => (
@@ -897,7 +912,15 @@ const LiveScoringPage = () => {
                         const res = await api.post(`/matches/${id}/start`, { battingTeamId: (match.team1Id?._id || match.team1Id) });
                         setMatch(res.data.data);
                         setActiveTeamId(res.data.data.battingTeamId);
-                      } catch (e) { alert(e.response?.data?.message || 'Failed to start match'); }
+                      } catch (e) { 
+                        setDialog({
+                          isOpen: true,
+                          title: 'Action Failed',
+                          message: e.response?.data?.message || 'Failed to start match',
+                          type: 'alert',
+                          onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+                        });
+                      }
                     }}
                     className="btn-primary flex-1 py-4 text-sm font-black uppercase tracking-widest shadow-xl shadow-primary/20"
                   >
@@ -909,7 +932,15 @@ const LiveScoringPage = () => {
                         const res = await api.post(`/matches/${id}/start`, { battingTeamId: (match.team2Id?._id || match.team2Id) });
                         setMatch(res.data.data);
                         setActiveTeamId(res.data.data.battingTeamId);
-                      } catch (e) { alert(e.response?.data?.message || 'Failed to start match'); }
+                      } catch (e) { 
+                        setDialog({
+                          isOpen: true,
+                          title: 'Action Failed',
+                          message: e.response?.data?.message || 'Failed to start match',
+                          type: 'alert',
+                          onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+                        });
+                      }
                     }}
                     className="btn-secondary flex-1 py-4 text-sm font-black uppercase tracking-widest shadow-xl shadow-secondary/20"
                   >
@@ -931,8 +962,8 @@ const LiveScoringPage = () => {
 
           {isOwner ? (
             <div className="flex flex-wrap gap-2">
-              {activeScore.ballByBall
-                .filter(b => b.over === Math.max(...activeScore.ballByBall.map(x => x.over), 1))
+              {(activeScore?.ballByBall || [])
+                .filter(b => b.over === Math.max(...(activeScore?.ballByBall || []).map(x => x.over), 1))
                 .map((ball, i) => (
                   <div key={i} className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm border-2 shadow-sm ${ball.type === 'wicket' ? 'bg-red-600 text-white border-red-700' :
                       ball.runs === 4 ? 'bg-accent/20 text-accent border-accent/30' :
@@ -947,7 +978,7 @@ const LiveScoringPage = () => {
           ) : (
             <div className="space-y-3">
               {Object.entries(
-                activeScore.ballByBall.reduce((acc, ball) => {
+                (activeScore?.ballByBall || []).reduce((acc, ball) => {
                   if (!acc[ball.over]) acc[ball.over] = [];
                   acc[ball.over].push(ball);
                   return acc;
@@ -1110,6 +1141,37 @@ const LiveScoringPage = () => {
                    ))}
                  </div>
                 )}
+              </div>
+            )}
+
+            {/* Out Batsman Selection */}
+            {selectedDismissalType && (['RUN_OUT', 'OBSTRUCTING_FIELD', 'RETIRED_HURT', 'RETIRED_OUT'].includes(selectedDismissalType)) && activeScore?.nonStrikerId && (
+              <div className="px-4 pb-4 border-t border-surface-border pt-4 bg-orange-50/30">
+                <label className="block text-xs font-black text-orange-600 uppercase tracking-widest mb-3">
+                  Who Got Out?
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setSelectedOutBatsmanId(activeScore?.strikerId)}
+                    className={`px-3 py-3 rounded-lg text-xs font-bold border transition-all ${
+                      selectedOutBatsmanId === activeScore?.strikerId
+                        ? 'bg-orange-600 text-white border-orange-700 shadow-sm'
+                        : 'bg-white text-txt-primary border-surface-border hover:border-orange-300'
+                    }`}
+                  >
+                    Striker <span className="opacity-70 font-normal">({battingPlayers.find(p => p._id === activeScore?.strikerId)?.name})</span>
+                  </button>
+                  <button
+                    onClick={() => setSelectedOutBatsmanId(activeScore?.nonStrikerId)}
+                    className={`px-3 py-3 rounded-lg text-xs font-bold border transition-all ${
+                      selectedOutBatsmanId === activeScore?.nonStrikerId
+                        ? 'bg-orange-600 text-white border-orange-700 shadow-sm'
+                        : 'bg-white text-txt-primary border-surface-border hover:border-orange-300'
+                    }`}
+                  >
+                    Non-Striker <span className="opacity-70 font-normal">({battingPlayers.find(p => p._id === activeScore?.nonStrikerId)?.name})</span>
+                  </button>
+                </div>
               </div>
             )}
 

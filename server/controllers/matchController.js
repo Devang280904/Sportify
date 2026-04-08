@@ -5,7 +5,7 @@ const ScoreRecord = require('../models/ScoreRecord');
 // @route   POST /api/matches
 exports.createMatch = async (req, res) => {
   try {
-    const { tournamentId, team1Id, team2Id, matchDate, venue, totalOvers, playersPerTeam } = req.body;
+    const { tournamentId, team1Id, team2Id, matchDate, venue, totalOvers, playersPerTeam, team1Players, team2Players } = req.body;
 
     if (team1Id === team2Id) {
       return res.status(400).json({ success: false, message: 'Team1 and Team2 cannot be the same' });
@@ -34,13 +34,30 @@ exports.createMatch = async (req, res) => {
       requiredPlayers = tournament.playersPerTeam || 11;
     }
 
-    // Validate player counts
-    if (team1.players.length !== requiredPlayers) {
-      return res.status(400).json({ success: false, message: `Team 1 (${team1.teamName}) has ${team1.players.length} players, but exactly ${requiredPlayers} are required` });
+    // Validate player counts and selection
+    if (team1.players.length < requiredPlayers) {
+      return res.status(400).json({ success: false, message: `Team 1 (${team1.teamName}) has only ${team1.players.length} players, but ${requiredPlayers} are required` });
+    }
+    if (team2.players.length < requiredPlayers) {
+      return res.status(400).json({ success: false, message: `Team 2 (${team2.teamName}) has only ${team2.players.length} players, but ${requiredPlayers} are required` });
     }
 
-    if (team2.players.length !== requiredPlayers) {
-      return res.status(400).json({ success: false, message: `Team 2 (${team2.teamName}) has ${team2.players.length} players, but exactly ${requiredPlayers} are required` });
+    let finalTeam1Players = team1Players;
+    if (team1.players.length === requiredPlayers) {
+      finalTeam1Players = team1.players;
+    } else {
+      if (!team1Players || team1Players.length !== requiredPlayers) {
+        return res.status(400).json({ success: false, message: `Please select exactly ${requiredPlayers} players for Team 1` });
+      }
+    }
+
+    let finalTeam2Players = team2Players;
+    if (team2.players.length === requiredPlayers) {
+      finalTeam2Players = team2.players;
+    } else {
+      if (!team2Players || team2Players.length !== requiredPlayers) {
+        return res.status(400).json({ success: false, message: `Please select exactly ${requiredPlayers} players for Team 2` });
+      }
     }
 
     // Backend Date Validation
@@ -61,6 +78,8 @@ exports.createMatch = async (req, res) => {
       venue, 
       totalOvers: totalOvers || 20, 
       playersPerTeam: requiredPlayers,
+      team1Players: finalTeam1Players,
+      team2Players: finalTeam2Players,
       createdBy: req.user.id
     };
     if (tournamentId) matchData.tournamentId = tournamentId;
@@ -138,6 +157,8 @@ exports.getMatch = async (req, res) => {
     const match = await Match.findById(req.params.id)
       .populate('team1Id', 'teamName logoURL players')
       .populate('team2Id', 'teamName logoURL players')
+      .populate('team1Players')
+      .populate('team2Players')
       .populate({ 
         path: 'tournamentId', 
         select: 'name organizerId',

@@ -145,8 +145,8 @@ const MatchViewerPage = () => {
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-primary"><div className="animate-spin rounded-full h-12 w-12 border-4 border-accent border-t-transparent"></div></div>;
   if (!match) return <div className="card text-center py-12"><p className="text-txt-muted">Match not found</p></div>;
 
-  const activeInningsTeamId = match.battingTeamId;
-  const activeScore = scores.find(s => s.teamId === activeInningsTeamId);
+  const activeInningsTeamId = match?.battingTeamId;
+  const activeScore = scores.find(s => s.teamId?.toString() === activeInningsTeamId?.toString());
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20 relative">
@@ -187,8 +187,8 @@ const MatchViewerPage = () => {
             
             {/* Team 1 Profile */}
             <div 
-              onClick={() => navigate(`/teams/${match.team1Id._id}`)}
-              className={`flex flex-col items-center gap-3 w-24 shrink-0 cursor-pointer hover:opacity-100 transition-opacity ${match.battingTeamId?.toString() === (match?.team1Id?._id || match?.team1Id).toString() ? 'opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'opacity-60 grayscale-[30%]'}`}>
+              onClick={() => navigate(`/teams/${match.team1Id?._id || match.team1Id}`)}
+              className={`flex flex-col items-center gap-3 w-24 shrink-0 cursor-pointer hover:opacity-100 transition-opacity ${match.battingTeamId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? 'opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'opacity-60 grayscale-[30%]'}`}>
               {match.team1Id?.logoURL ? (
                 <img src={match.team1Id.logoURL} alt={match.team1Id.teamName} className="w-16 h-16 object-contain" />
               ) : (
@@ -212,7 +212,7 @@ const MatchViewerPage = () => {
                 {match.currentInnings === 2 && match.status === 'live' && (
                   <div className="mb-2 px-3 py-1 bg-white/10 rounded-full">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-white">Target: {
-                      (scores.find(s => s.teamId.toString() !== match.battingTeamId.toString())?.runs || 0) + 1
+                      (scores.find(s => s.teamId?.toString() !== match?.battingTeamId?.toString())?.runs || 0) + 1
                     }</span>
                   </div>
                 )}
@@ -230,7 +230,7 @@ const MatchViewerPage = () => {
 
             {/* Team 2 Profile */}
             <div 
-              onClick={() => navigate(`/teams/${match.team2Id._id}`)}
+              onClick={() => navigate(`/teams/${match.team2Id?._id || match.team2Id}`)}
               className={`flex flex-col items-center gap-3 w-24 shrink-0 cursor-pointer hover:opacity-100 transition-opacity ${match.battingTeamId?.toString() === (match?.team2Id?._id || match?.team2Id).toString() ? 'opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'opacity-60 grayscale-[30%]'}`}>
               {match.team2Id?.logoURL ? (
                 <img src={match.team2Id.logoURL} alt={match.team2Id.teamName} className="w-16 h-16 object-contain" />
@@ -318,7 +318,7 @@ const MatchViewerPage = () => {
                  <h3 className="text-xs font-black text-txt-primary mb-6 uppercase tracking-widest border-b border-surface-border pb-4">Match Timeline (Ball by Ball)</h3>
                  
                  {scores.map((score, sIdx) => {
-                     const team = score.teamId?.toString() === (match?.team1Id?._id || match?.team1Id).toString() ? match.team1Id : match.team2Id;
+                     const team = score.teamId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? match.team1Id : match.team2Id;
                      const overs = processInningsBalls(score.ballByBall || []);
                      
                      if (overs.length === 0) return null;

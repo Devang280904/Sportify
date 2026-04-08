@@ -22,6 +22,14 @@ const matchSchema = new mongoose.Schema({
     ref: 'Team',
     required: true,
   },
+  team1Players: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Player',
+  }],
+  team2Players: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Player',
+  }],
   matchDate: {
     type: Date,
     required: [true, 'Match date is required'],

@@ -14,6 +14,8 @@ const CreateMatchPage = () => {
   const [form, setForm] = useState({
     tournamentId: '', team1Id: '', team2Id: '', matchDate: '', venue: '', totalOvers: 20, playersPerTeam: 11
   });
+  const [team1SelectedPlayers, setTeam1SelectedPlayers] = useState([]);
+  const [team2SelectedPlayers, setTeam2SelectedPlayers] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -33,7 +35,7 @@ const CreateMatchPage = () => {
   // Check if team has the required amount of players
   const hasCompleteSquad = (teamId) => {
     const team = getTeamDetails(teamId);
-    return team && team.players && team.players.length === getRequiredPlayers();
+    return team && team.players && team.players.length >= getRequiredPlayers();
   };
 
   // Get player count for display
@@ -105,7 +107,33 @@ const CreateMatchPage = () => {
         .then(res => setTeams(res.data.data))
         .catch(console.error);
     }
+    // Reset selected players when tournament or teams change
+    setTeam1SelectedPlayers([]);
+    setTeam2SelectedPlayers([]);
   }, [form.tournamentId, tournaments]);
+
+  const togglePlayerSelection = (teamNum, playerId) => {
+    const required = getRequiredPlayers();
+    if (teamNum === 1) {
+      setTeam1SelectedPlayers(prev => {
+        if (prev.includes(playerId)) return prev.filter(id => id !== playerId);
+        if (prev.length < required) return [...prev, playerId];
+        return prev;
+      });
+    } else {
+      setTeam2SelectedPlayers(prev => {
+        if (prev.includes(playerId)) return prev.filter(id => id !== playerId);
+        if (prev.length < required) return [...prev, playerId];
+        return prev;
+      });
+    }
+  };
+
+  const autoSelectPlayers = (teamNum, players) => {
+    const ids = players.map(p => p._id);
+    if (teamNum === 1) setTeam1SelectedPlayers(ids);
+    else setTeam2SelectedPlayers(ids);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -123,39 +151,23 @@ const CreateMatchPage = () => {
     if (!form.team1Id || !form.team2Id) {
       return setError('Please select both teams');
     }
-    
-    /* Previous strict 11-player constraint was here */
 
-    // Frontend Date Validation
-    const selectedDate = new Date(form.matchDate);
-    const currentDate = new Date();
-    
-    // We allow a 5 minute grace period for "current time" selections
-    currentDate.setMinutes(currentDate.getMinutes() - 5);
-
-    if (selectedDate < currentDate) {
-      return setError('Match cannot be scheduled in the past. Please select the current time or a future time.');
+    const required = getRequiredPlayers();
+    if (team1.players.length > required && team1SelectedPlayers.length !== required) {
+      return setError(`Please select exactly ${required} players for ${team1.teamName}`);
     }
-
-    // Tournament date range validation
-    if (selectedTournament) {
-      const tourStart = new Date(selectedTournament.startDate);
-      tourStart.setHours(0, 0, 0, 0);
-      const tourEnd = new Date(selectedTournament.endDate);
-      tourEnd.setHours(23, 59, 59, 999);
-
-      if (selectedDate < tourStart) {
-        return setError(`Match date cannot be before tournament start date (${new Date(selectedTournament.startDate).toLocaleDateString()})`);
-      }
-
-      if (selectedDate > tourEnd) {
-        return setError(`Match date cannot be after tournament end date (${new Date(selectedTournament.endDate).toLocaleDateString()})`);
-      }
+    if (team2.players.length > required && team2SelectedPlayers.length !== required) {
+      return setError(`Please select exactly ${required} players for ${team2.teamName}`);
     }
 
     setSaving(true);
     try {
-      const res = await api.post('/matches', form);
+      const payload = {
+        ...form,
+        team1Players: team1.players.length > required ? team1SelectedPlayers : team1.players.map(p => p._id),
+        team2Players: team2.players.length > required ? team2SelectedPlayers : team2.players.map(p => p._id),
+      };
+      const res = await api.post('/matches', payload);
       navigate(`/match/${res.data.data._id}/score`);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create match');
@@ -233,6 +245,52 @@ const CreateMatchPage = () => {
               />
             </div>
           </div>
+
+          {/* Player Selection UI for Team 1 */}
+          {form.team1Id && getTeamDetails(form.team1Id)?.players?.length > getRequiredPlayers() && (
+            <div className="card bg-surface-alt border border-surface-border p-4 animate-fade-in translate-y-[-10px]">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-black uppercase tracking-widest text-primary">Select Playing {getRequiredPlayers()} for {getTeamDetails(form.team1Id)?.teamName}</h3>
+                <span className="text-xs font-bold text-txt-muted">{team1SelectedPlayers.length} / {getRequiredPlayers()} Selected</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {getTeamDetails(form.team1Id)?.players?.map(p => (
+                  <button
+                    key={p._id}
+                    type="button"
+                    onClick={() => togglePlayerSelection(1, p._id)}
+                    className={`p-2 text-xs rounded-lg border-2 transition-all flex items-center gap-2 ${team1SelectedPlayers.includes(p._id) ? 'border-primary bg-primary/5 text-primary' : 'border-surface-border bg-white text-txt-secondary opacity-60'}`}
+                  >
+                    <div className={`w-3 h-3 rounded-sm border ${team1SelectedPlayers.includes(p._id) ? 'bg-primary border-primary' : 'bg-transparent border-txt-muted/30'}`}></div>
+                    <span className="truncate font-bold">{p.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Player Selection UI for Team 2 */}
+          {form.team2Id && getTeamDetails(form.team2Id)?.players?.length > getRequiredPlayers() && (
+            <div className="card bg-surface-alt border border-surface-border p-4 animate-fade-in translate-y-[-10px]">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-black uppercase tracking-widest text-secondary">Select Playing {getRequiredPlayers()} for {getTeamDetails(form.team2Id).teamName}</h3>
+                <span className="text-xs font-bold text-txt-muted">{team2SelectedPlayers.length} / {getRequiredPlayers()} Selected</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {getTeamDetails(form.team2Id)?.players?.map(p => (
+                  <button
+                    key={p._id}
+                    type="button"
+                    onClick={() => togglePlayerSelection(2, p._id)}
+                    className={`p-2 text-xs rounded-lg border-2 transition-all flex items-center gap-2 ${team2SelectedPlayers.includes(p._id) ? 'border-secondary bg-secondary/5 text-secondary' : 'border-surface-border bg-white text-txt-secondary opacity-60'}`}
+                  >
+                    <div className={`w-3 h-3 rounded-sm border ${team2SelectedPlayers.includes(p._id) ? 'bg-secondary border-secondary' : 'bg-transparent border-txt-muted/30'}`}></div>
+                    <span className="truncate font-bold">{p.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>

@@ -52,7 +52,15 @@ exports.setBatsmen = async (req, res) => {
       return res.status(404).json({ success: false, message: `Score record not found for team ${teamId} in match ${matchId}` });
     }
 
+    const match = await Match.findById(matchId);
+    if (!match) return res.status(404).json({ success: false, message: 'Match not found' });
+
+    const squad = teamId.toString() === match.team1Id.toString() ? match.team1Players : match.team2Players;
+
     if (strikerId) {
+      if (squad && squad.length > 0 && !squad.map(id => id.toString()).includes(strikerId.toString())) {
+        return res.status(400).json({ success: false, message: 'Selected striker is not part of the match squad.' });
+      }
       // Check if already out
       const stat = scoreRecord.batting.find(b => b.playerId.toString() === strikerId.toString());
       if (stat && stat.isOut) return res.status(400).json({ success: false, message: 'This player is already out and cannot bat again!' });
@@ -64,6 +72,9 @@ exports.setBatsmen = async (req, res) => {
       }
     }
     if (nonStrikerId) {
+      if (squad && squad.length > 0 && !squad.map(id => id.toString()).includes(nonStrikerId.toString())) {
+        return res.status(400).json({ success: false, message: 'Selected non-striker is not part of the match squad.' });
+      }
       const stat = scoreRecord.batting.find(b => b.playerId.toString() === nonStrikerId.toString());
       if (stat && stat.isOut) return res.status(400).json({ success: false, message: 'This player is already out and cannot bat again!' });
       
@@ -106,7 +117,14 @@ exports.setBowler = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Match not found' });
     }
 
+    // Since teamId represents the record being updated (batting team), we need the OTHER team's squad for bowling
+    const bowlingSquad = teamId.toString() === match.team1Id.toString() ? match.team2Players : match.team1Players;
+
     if (bowlerId) {
+      if (bowlingSquad && bowlingSquad.length > 0 && !bowlingSquad.map(id => id.toString()).includes(bowlerId.toString())) {
+         return res.status(400).json({ success: false, message: 'Selected bowler is not part of the match squad.' });
+      }
+
       const maxOversPerBowler = Math.ceil((match.totalOvers || 20) / 5);
       const bowlerStat = scoreRecord.bowling.find(b => b.playerId.toString() === bowlerId.toString());
       if (bowlerStat && bowlerStat.ballsBowled >= maxOversPerBowler * 6) {
@@ -135,7 +153,7 @@ exports.setBowler = async (req, res) => {
 // @route   POST /api/matches/:id/score
 exports.updateScore = async (req, res) => {
   try {
-    const { teamId, runs, type, description, strikerId, nonStrikerId, bowlerId, dismissalType, dismissalDescription } = req.body;
+    const { teamId, runs, type, description, strikerId, nonStrikerId, bowlerId, dismissalType, dismissalDescription, outBatsmanId } = req.body;
     const matchId = req.params.id;
 
     if (!teamId) {
@@ -247,6 +265,7 @@ exports.updateScore = async (req, res) => {
       strikerId: currentStrikerId,
       nonStrikerId: scoreRecord.nonStrikerId,
       bowlerId: currentBowlerId,
+      outBatsmanId: currentBallType === 'wicket' ? (outBatsmanId || currentStrikerId) : null,
       dismissalType: currentBallType === 'wicket' ? (dismissalType || null) : null,
       dismissalDescription: currentBallType === 'wicket' ? (dismissalDescription || '') : '',
       timestamp: new Date(),
@@ -267,12 +286,21 @@ exports.updateScore = async (req, res) => {
 
       if (batsmanRuns === 4) striker.fours += 1;
       if (batsmanRuns === 6) striker.sixes += 1;
-      if (currentBallType === 'wicket') {
+      if (currentBallType === 'wicket' && (!outBatsmanId || outBatsmanId.toString() === currentStrikerId.toString())) {
         striker.isOut = true;
         striker.dismissalType = dismissalType || null;
         striker.dismissalDescription = dismissalDescription || '';
       }
       striker.strikeRate = striker.ballsFaced > 0 ? (striker.runs / striker.ballsFaced) * 100 : 0;
+    }
+
+    if (currentBallType === 'wicket' && outBatsmanId && outBatsmanId.toString() !== currentStrikerId.toString()) {
+      const nonStriker = scoreRecord.batting.find(b => b.playerId.toString() === outBatsmanId.toString());
+      if (nonStriker) {
+        nonStriker.isOut = true;
+        nonStriker.dismissalType = dismissalType || null;
+        nonStriker.dismissalDescription = dismissalDescription || '';
+      }
     }
 
     // Update bowler stats
@@ -295,7 +323,12 @@ exports.updateScore = async (req, res) => {
     if (currentBallType === 'wicket') {
       const maxWickets = (match.playersPerTeam || 11) - 1;
       scoreRecord.wickets = Math.min(scoreRecord.wickets + 1, maxWickets + 1);
-      scoreRecord.strikerId = null; // Wait for new batsman selection
+      
+      if (outBatsmanId && scoreRecord.nonStrikerId && outBatsmanId.toString() === scoreRecord.nonStrikerId.toString()) {
+        scoreRecord.nonStrikerId = null;
+      } else {
+        scoreRecord.strikerId = null; // Wait for new batsman selection
+      }
     }
 
     if (legalDelivery) {
@@ -460,12 +493,21 @@ exports.undoLastBall = async (req, res) => {
       
       if (lastBall.batsmanRuns === 4) striker.fours -= 1;
       if (lastBall.batsmanRuns === 6) striker.sixes -= 1;
-      if (lastBall.type === 'wicket') {
+      if (lastBall.type === 'wicket' && (!lastBall.outBatsmanId || lastBall.outBatsmanId.toString() === striker.playerId.toString())) {
         striker.isOut = false;
         striker.dismissalType = null;
         striker.dismissalDescription = '';
       }
       striker.strikeRate = striker.ballsFaced > 0 ? (striker.runs / striker.ballsFaced) * 100 : 0;
+    }
+
+    if (lastBall.type === 'wicket' && lastBall.outBatsmanId && striker && lastBall.outBatsmanId.toString() !== striker.playerId.toString()) {
+      const outBatsman = scoreRecord.batting.find(b => b.playerId.toString() === lastBall.outBatsmanId.toString());
+      if (outBatsman) {
+        outBatsman.isOut = false;
+        outBatsman.dismissalType = null;
+        outBatsman.dismissalDescription = '';
+      }
     }
 
     // Ensure stats don't go negative (Safety check)

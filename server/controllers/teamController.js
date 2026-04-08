@@ -209,12 +209,10 @@ exports.addPlayer = async (req, res) => {
       return res.status(403).json({ success: false, message: 'No permission' });
     }
 
-    const maxPlayers = team.tournamentIds?.length > 0
-      ? Math.max(...team.tournamentIds.map(t => t.playersPerTeam || 11))
-      : 11;
+    const maxSquadSize = 30;
 
-    if (team.players.length >= maxPlayers) {
-      return res.status(400).json({ success: false, message: `Team already has the maximum allowed ${maxPlayers} players` });
+    if (team.players.length >= maxSquadSize) {
+      return res.status(400).json({ success: false, message: `Team already has the maximum allowed ${maxSquadSize} players` });
     }
 
     const { name, role, battingStyle, bowlingStyle } = req.body;
@@ -371,12 +369,10 @@ exports.uploadPlayers = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid player data' });
     }
 
-    const maxPlayers = team.tournamentIds?.length > 0
-      ? Math.max(...team.tournamentIds.map(t => t.playersPerTeam || 11))
-      : 11;
+    const maxSquadSize = 30;
 
-    if (team.players.length + players.length > maxPlayers) {
-      return res.status(400).json({ success: false, message: `Uploading ${players.length} players would exceed the ${maxPlayers}-player limit (Current: ${team.players.length})` });
+    if (team.players.length + players.length > maxSquadSize) {
+      return res.status(400).json({ success: false, message: `Uploading ${players.length} players would exceed the ${maxSquadSize}-player squad limit (Current: ${team.players.length})` });
     }
 
     const newPlayers = [];

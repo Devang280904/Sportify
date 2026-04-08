@@ -131,7 +131,7 @@ const MatchGraphs = ({ scores, match }) => {
         <div className="bg-white/95 border border-surface-border p-3 rounded-lg shadow-xl backdrop-blur-sm min-w-[180px]">
           <p className="font-black text-[10px] uppercase tracking-widest text-txt-muted mb-2">Over {overDisplay}</p>
           {payload.map((entry, index) => {
-             const prefix = entry.dataKey.startsWith('t1') ? 't1' : 't2';
+             const prefix = entry.dataKey.toString().startsWith('t1') ? 't1' : 't2';
              const wicketInfo = entry.payload[`${prefix}WicketInfo`];
              
              return (

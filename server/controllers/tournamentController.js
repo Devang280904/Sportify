@@ -91,6 +91,14 @@ exports.updateTournament = async (req, res) => {
     if (tournament.organizerId.toString() !== req.user.id) {
       return res.status(403).json({ success: false, message: 'You cannot add or modify another user’s tournament/match.' });
     }
+
+    const mongoose = require('mongoose');
+    const Match = mongoose.model('Match');
+    const ongoingMatch = await Match.findOne({ tournamentId: req.params.id, status: 'live' });
+    if (ongoingMatch) {
+      return res.status(400).json({ success: false, message: 'Cannot edit tournament while a match is ongoing.' });
+    }
+
     // If dates are being updated, validate them
     if (req.body.startDate || req.body.endDate) {
       const today = new Date();
@@ -120,9 +128,10 @@ exports.updateTournament = async (req, res) => {
         return res.status(400).json({ success: false, message: 'End date must be equal to or after the start date.' });
       }
     }
-    const updated = await Tournament.findByIdAndUpdate(req.params.id, req.body, {
-      new: true, runValidators: true,
-    });
+    
+    Object.assign(tournament, req.body);
+    const updated = await tournament.save();
+    
     await delCache('tournaments:all');
     res.json({ success: true, data: updated });
   } catch (error) {

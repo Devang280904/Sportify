@@ -165,8 +165,8 @@ const MatchSummaryPage = () => {
 
             {/* Team 1 Profile */}
             <div 
-              onClick={() => navigate(`/teams/${match.team1Id._id}`)}
-              className={`flex flex-col items-center gap-3 w-24 shrink-0 cursor-pointer hover:opacity-100 transition-opacity ${match.winnerId?.toString() === (match?.team1Id?._id || match?.team1Id).toString() ? 'opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'opacity-60 grayscale-[30%]'}`}>
+              onClick={() => navigate(`/teams/${match.team1Id?._id || match.team1Id}`)}
+              className={`flex flex-col items-center gap-3 w-24 shrink-0 cursor-pointer hover:opacity-100 transition-opacity ${match.winnerId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? 'opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'opacity-60 grayscale-[30%]'}`}>
               {match.team1Id?.logoURL ? (
                 <img src={match.team1Id.logoURL} alt={match.team1Id.teamName} className="w-16 h-16 object-contain" />
               ) : (
@@ -179,10 +179,10 @@ const MatchSummaryPage = () => {
             <div className="flex-1 flex justify-center items-center gap-6 md:gap-16 w-full">
               {/* Team 1 Score */}
               <div className="text-center">
-                <h2 className={`text-3xl lg:text-4xl font-black tabular-nums tracking-tight ${match.winnerId?.toString() === (match?.team1Id?._id || match?.team1Id).toString() ? 'text-white' : 'text-white/80'}`}>
-                  {scores.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id).toString())?.runs || 0}/{scores.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id).toString())?.wickets || 0}
+                <h2 className={`text-3xl lg:text-4xl font-black tabular-nums tracking-tight ${match.winnerId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? 'text-white' : 'text-white/80'}`}>
+                  {scores.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id)?.toString())?.runs || 0}/{scores.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id)?.toString())?.wickets || 0}
                 </h2>
-                <p className="text-sm text-white/60 font-medium mt-1">({scores.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id).toString())?.overs || 0} ov)</p>
+                <p className="text-sm text-white/60 font-medium mt-1">({scores.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id)?.toString())?.overs || 0} ov)</p>
               </div>
 
               {/* Separator */}
@@ -192,17 +192,17 @@ const MatchSummaryPage = () => {
 
               {/* Team 2 Score */}
               <div className="text-center">
-                <h2 className={`text-3xl lg:text-4xl font-black tabular-nums tracking-tight ${match.winnerId?.toString() === (match?.team2Id?._id || match?.team2Id).toString() ? 'text-white' : 'text-white/80'}`}>
-                  {scores.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id).toString())?.runs || 0}/{scores.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id).toString())?.wickets || 0}
+                <h2 className={`text-3xl lg:text-4xl font-black tabular-nums tracking-tight ${match.winnerId?.toString() === (match?.team2Id?._id || match?.team2Id)?.toString() ? 'text-white' : 'text-white/80'}`}>
+                  {scores.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id)?.toString())?.runs || 0}/{scores.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id)?.toString())?.wickets || 0}
                 </h2>
-                <p className="text-sm text-white/60 font-medium mt-1">({scores.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id).toString())?.overs || 0} ov)</p>
+                <p className="text-sm text-white/60 font-medium mt-1">({scores.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id)?.toString())?.overs || 0} ov)</p>
               </div>
             </div>
 
             {/* Team 2 Profile */}
             <div 
-              onClick={() => navigate(`/teams/${match.team2Id._id}`)}
-              className={`flex flex-col items-center gap-3 w-24 shrink-0 cursor-pointer hover:opacity-100 transition-opacity ${match.winnerId?.toString() === (match?.team2Id?._id || match?.team2Id).toString() ? 'opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'opacity-60 grayscale-[30%]'}`}>
+              onClick={() => navigate(`/teams/${match.team2Id?._id || match.team2Id}`)}
+              className={`flex flex-col items-center gap-3 w-24 shrink-0 cursor-pointer hover:opacity-100 transition-opacity ${match.winnerId?.toString() === (match?.team2Id?._id || match?.team2Id)?.toString() ? 'opacity-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]' : 'opacity-60 grayscale-[30%]'}`}>
               {match.team2Id?.logoURL ? (
                 <img src={match.team2Id.logoURL} alt={match.team2Id.teamName} className="w-16 h-16 object-contain" />
               ) : (
@@ -250,7 +250,7 @@ const MatchSummaryPage = () => {
                 <h3 className="text-xs font-black text-txt-primary mb-6 uppercase tracking-widest border-b border-surface-border pb-4">Match Timeline (Ball by Ball)</h3>
                 
                 {scores.map((score, sIdx) => {
-                    const team = score.teamId?.toString() === (match?.team1Id?._id || match?.team1Id).toString() ? match.team1Id : match.team2Id;
+                    const team = score.teamId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? match.team1Id : match.team2Id;
                     const overs = processInningsBalls(score.ballByBall || []);
                     
                     if (overs.length === 0) return null;
@@ -333,7 +333,7 @@ const MatchSummaryPage = () => {
       {activeTab === 'scorecard' && (
         <div className="space-y-6 animate-fade-in">
           {scores.map((score, idx) => {
-            const team = score.teamId?.toString() === (match?.team1Id?._id || match?.team1Id).toString() ? match.team1Id : match.team2Id;
+            const team = score.teamId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? match.team1Id : match.team2Id;
             return (
               <div key={idx} className="card p-0 overflow-hidden border-none shadow-xl">
                 <div className="bg-primary px-6 py-3 flex justify-between items-center text-white">

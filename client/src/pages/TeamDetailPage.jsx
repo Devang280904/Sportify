@@ -19,7 +19,6 @@ const TeamDetailPage = () => {
   // Edit Team States
   const [showEditTeam, setShowEditTeam] = useState(false);
   const [editTeamName, setEditTeamName] = useState('');
-  const [editLogoURL, setEditLogoURL] = useState('');
   const [showDeletePlayerModal, setShowDeletePlayerModal] = useState(null);
 
   // Manual Player Add States
@@ -70,7 +69,7 @@ const TeamDetailPage = () => {
 
   const handleAddManualPlayer = async (e) => {
     e.preventDefault();
-    const currentMaxPlayers = team?.tournamentIds?.length > 0 ? Math.max(...team.tournamentIds.map(t => t.playersPerTeam || 11)) : 11;
+    const currentMaxPlayers = 30;
     if (team.players.length >= currentMaxPlayers) {
       setDialog({
         isOpen: true,
@@ -133,7 +132,6 @@ const TeamDetailPage = () => {
     try {
       await api.put(`/teams/${id}`, { 
         teamName: editTeamName.trim(),
-        logoURL: editLogoURL.trim()
       });
       setShowEditTeam(false);
       fetchTeam();
@@ -233,23 +231,21 @@ const TeamDetailPage = () => {
   if (!team) return <div className="card text-center py-12"><p className="text-txt-muted">Team not found</p></div>;
 
   // Check if user owns this team
-  const isTeamOwner = user && team.createdBy && (
-    user._id?.toString() === team.createdBy._id?.toString() ||
-    user.id?.toString() === team.createdBy._id?.toString()
-  );
-  const isTournamentOrganizer = user && team.tournamentId?.organizerId && (
-    user._id?.toString() === team.tournamentId.organizerId._id?.toString() ||
-    user.id?.toString() === team.tournamentId.organizerId._id?.toString()
-  );
+  const userId = user?.id || user?._id;
+  const creatorId = team.createdBy?._id || team.createdBy;
+  const isTeamOwner = userId && creatorId && userId.toString() === creatorId.toString();
+
+  const isTournamentOrganizer = userId && team.tournamentIds?.some(t => {
+    const orgId = t.organizerId?._id || t.organizerId;
+    return orgId && orgId.toString() === userId.toString();
+  });
+  
   const canEdit = isTeamOwner || isTournamentOrganizer;
 
-  const maxPlayers = team.tournamentIds?.length > 0 
-    ? Math.max(...team.tournamentIds.map(t => t.playersPerTeam || 11)) 
-    : 11;
+  const maxPlayers = 30;
 
   const handleOpenEdit = () => {
     setEditTeamName(team.teamName);
-    setEditLogoURL(team.logoURL || '');
     setShowEditTeam(true);
   };
 
@@ -276,9 +272,6 @@ const TeamDetailPage = () => {
                 )}
               </div>
               <div className="flex items-center gap-2 mt-1">
-                <span className={`px-2 py-0.5 rounded text-[11px] uppercase tracking-widest font-bold border ${team.players?.length >= maxPlayers ? 'bg-accent/10 border-accent/20 text-accent' : 'bg-surface-border border-surface-border text-txt-muted'}`}>
-                  {team.players?.length || 0}/{maxPlayers} players
-                </span>
                 {team.tournamentIds?.length > 0 && (
                   <span className="bg-primary/5 text-primary text-[11px] px-2 py-0.5 rounded border border-primary/10 max-w-[140px] truncate sm:max-w-none">
                     {team.tournamentIds[0].name}
@@ -489,15 +482,6 @@ const TeamDetailPage = () => {
                   className="input"
                   placeholder="e.g. Mumbai Indians"
                   required
-                />
-              </div>
-              <div>
-                <label className="label">Logo URL</label>
-                <input
-                  value={editLogoURL}
-                  onChange={(e) => setEditLogoURL(e.target.value)}
-                  className="input"
-                  placeholder="https://example.com/logo.png"
                 />
               </div>
               <div className="flex gap-3 pt-2">

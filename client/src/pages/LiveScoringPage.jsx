@@ -136,6 +136,7 @@ const LiveScoringPage = () => {
   const bowlingPlayers = activeTeamId?.toString() === (match?.team1Id?._id || match?.team1Id)?.toString() ? team2Players : team1Players;
   const lastBall = activeScore?.ballByBall?.[activeScore.ballByBall.length - 1];
   const isFreeHit = lastBall?.type === 'no-ball';
+  const isAllOut = activeScore?.wickets >= (match?.playersPerTeam || 11) - 1;
 
   const updateScore = async (runs, type = 'normal', description = '', dismissalType = null, dismissalDesc = '') => {
     if (!activeTeamId || updating) return;
@@ -174,7 +175,7 @@ const LiveScoringPage = () => {
         setShowCelebration(true);
       }
 
-      if (type === 'wicket') {
+      if (type === 'wicket' && !isAllOut) {
         setShowBatsmanModal(true);
         setSelectingType('striker');
       }
@@ -598,7 +599,39 @@ const LiveScoringPage = () => {
 
           {/* Scoring Controls */}
           {isOwner && (
-            <div className="card shadow-2xl overflow-hidden">
+            <div className="card shadow-2xl overflow-hidden relative">
+              {/* All Out / Innings Over Overlay */}
+              {(isAllOut || (activeScore?.overs === match?.totalOvers)) && match.status !== 'completed' && (
+                <div className="absolute inset-0 bg-white/95 backdrop-blur-md z-30 flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+                  <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4 text-4xl shadow-inner">
+                    {isAllOut ? '☝️' : '🔔'}
+                  </div>
+                  <h2 className="text-3xl font-black text-txt-primary uppercase tracking-tighter mb-2">
+                    {isAllOut ? 'Innings Over (All Out)' : 'Innings Over (Max Overs)'}
+                  </h2>
+                  <p className="text-txt-muted text-sm max-w-xs mb-8 font-medium">
+                    {match.currentInnings === 1 
+                      ? "The first innings has completed. Please swap innings to start the second innings."
+                      : "The second innings has completed. Use the button below to finalize the match results."}
+                  </p>
+                  
+                  <div className="flex flex-col w-full max-w-sm gap-3">
+                    {match.currentInnings === 1 ? (
+                      <button onClick={handleSwapInnings} className="btn-secondary py-5 text-xl font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+                        Swap Innings 🔄
+                      </button>
+                    ) : (
+                      <button onClick={completeMatch} className="btn-primary py-5 text-xl font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+                        End & Finalize Match 🏆
+                      </button>
+                    )}
+                    <button onClick={undoLastBall} className="text-txt-muted font-bold text-sm hover:underline py-2">
+                      Wait, Undo last ball
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="bg-primary text-white px-4 py-2 text-xs font-bold tracking-widest uppercase flex justify-between">
                 <span>Quick Actions</span>
                 <span>Innings {match.currentInnings}</span>

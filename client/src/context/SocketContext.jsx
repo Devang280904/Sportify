@@ -9,16 +9,19 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    // Bypass Vite proxy during development to avoid ECONNABORTED errors
+    // Bypass Vite proxy during development to avoid ECONNABORTED errors, 
+    // but use the current hostname to allow other devices on the LAN to connect.
     const isDev = import.meta.env.MODE === 'development';
-    const socketUrl = isDev ? 'http://localhost:5001' : '';
+    const socketUrl = isDev ? `http://${window.location.hostname}:5001` : '';
+    
     const newSocket = io(socketUrl, {
       path: '/socket.io/', // Explicitly defined path
-      transports: ['websocket'], // Use WebSocket primarily
+      transports: ['websocket', 'polling'], // Fallback to polling if needed
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionAttempts: 10, // Increased for better recovery
-      timeout: 20000, // Matching proxy timeouts
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: Infinity, // Keep trying
+      timeout: 20000,
     });
 
     newSocket.on('connect', () => {

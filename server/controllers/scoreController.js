@@ -156,6 +156,26 @@ exports.updateScore = async (req, res) => {
     }
 
     if (match.status === 'scheduled') {
+      const isTeamPlaying = async (teamId, currentMatchId) => {
+        return await Match.findOne({
+          _id: { $ne: currentMatchId },
+          status: 'live',
+          $or: [{ team1Id: teamId }, { team2Id: teamId }],
+        }).populate('team1Id team2Id');
+      };
+
+      const team1Playing = await isTeamPlaying(match.team1Id._id || match.team1Id, match._id);
+      if (team1Playing) {
+        const pName = team1Playing.team1Id._id.toString() === (match.team1Id._id || match.team1Id).toString() ? team1Playing.team1Id.teamName : team1Playing.team2Id.teamName;
+        return res.status(400).json({ success: false, message: `Team "${pName}" is already playing another match. Please end that match first.` });
+      }
+
+      const team2Playing = await isTeamPlaying(match.team2Id._id || match.team2Id, match._id);
+      if (team2Playing) {
+        const pName = team2Playing.team1Id._id.toString() === (match.team2Id._id || match.team2Id).toString() ? team2Playing.team1Id.teamName : team2Playing.team2Id.teamName;
+        return res.status(400).json({ success: false, message: `Team "${pName}" is already playing another match. Please end that match first.` });
+      }
+
       await Match.findByIdAndUpdate(matchId, { $set: { status: 'live' } });
       const io = req.app.get('io');
       const startPayload = { matchId: matchId.toString() };

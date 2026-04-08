@@ -96,21 +96,27 @@ exports.updateTournament = async (req, res) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      const startDate = req.body.startDate ? new Date(req.body.startDate) : new Date(tournament.startDate);
-      startDate.setHours(0, 0, 0, 0);
+      const newStartDate = req.body.startDate ? new Date(req.body.startDate) : new Date(tournament.startDate);
+      newStartDate.setHours(0, 0, 0, 0);
       
-      const endDate = req.body.endDate ? new Date(req.body.endDate) : new Date(tournament.endDate);
-      endDate.setHours(0, 0, 0, 0);
+      const newEndDate = req.body.endDate ? new Date(req.body.endDate) : new Date(tournament.endDate);
+      newEndDate.setHours(0, 0, 0, 0);
 
-      if (startDate < today) {
-        return res.status(400).json({ success: false, message: 'Start date cannot be before today.' });
+      // Only validate "before today" if the field is actually being changed to a new value
+      if (req.body.startDate && new Date(req.body.startDate).getTime() !== new Date(tournament.startDate).getTime()) {
+        if (newStartDate < today) {
+          return res.status(400).json({ success: false, message: 'Start date cannot be before today.' });
+        }
       }
 
-      if (endDate < today) {
-        return res.status(400).json({ success: false, message: 'End date cannot be before today.' });
+      if (req.body.endDate && new Date(req.body.endDate).getTime() !== new Date(tournament.endDate).getTime()) {
+        if (newEndDate < today) {
+          return res.status(400).json({ success: false, message: 'End date cannot be before today.' });
+        }
       }
 
-      if (endDate < startDate) {
+      // Logical consistency check: End date must always be after start date
+      if (newEndDate < newStartDate) {
         return res.status(400).json({ success: false, message: 'End date must be equal to or after the start date.' });
       }
     }

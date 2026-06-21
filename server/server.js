@@ -81,9 +81,23 @@ const startServer = async () => {
   try {
     await connectDB();
     connectRedis();
+    const { getRedisStats } = require('./config/redis');
 
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
+      
+      // System Stats Logger for Interview Demo
+      setInterval(() => {
+        const memory = process.memoryUsage();
+        const memMB = (memory.rss / 1024 / 1024).toFixed(2);
+        const redisStats = getRedisStats();
+        
+        console.log('\n--- 📊 SYSTEM TELEMETRY ---');
+        console.log(`[Sockets] Active Clients: ${io.engine.clientsCount}`);
+        console.log(`[Redis]   Cache Hits: ${redisStats.cacheHits} | Misses: ${redisStats.cacheMisses}`);
+        console.log(`[Memory]  Usage: ${memMB} MB`);
+        console.log('---------------------------\n');
+      }, 10000); // Log every 10 seconds
     });
   } catch (error) {
     console.error(`Failed to start server: ${error.message}`);

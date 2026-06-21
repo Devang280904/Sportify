@@ -1,0 +1,86 @@
+# Sportify: Comprehensive Interview Prep Guide
+
+This document is designed to help you confidently answer technical interview questions about the Sportify project. It covers the core flows, the full technology stack, and specific deep dives into React, backend logic, databases, sockets, and Redis.
+
+---
+
+## 1. Core Flow of the Project
+
+**What is Sportify?**
+Sportify is a real-time, professional cricket scoring and tournament management platform. It acts as a live dashboard that syncs score updates to thousands of viewers instantly without page reloads.
+
+**The Core Flow (From Admin Click to Viewer Screen):**
+1. **Admin Action:** The admin clicks a scoring button (e.g., "4 runs") on the frontend.
+2. **HTTP Request:** The React app sends a secure HTTP POST request (`/api/matches/:id/score`) with the token to the Express backend.
+3. **Database Write:** The Express Controller validates the user, processes the complex cricket logic (runs, strike rotation, over limits), and securely saves the updated state to MongoDB *first*.
+4. **Real-Time Broadcast:** Once the database confirms the save, the controller gets the attached Socket.io instance and emits a `scoreUpdated` event *only* to the specific isolated WebSocket room (`match:${matchId}`).
+5. **Viewer Update:** The viewers' React apps, which are listening to that room, receive the event, update their state, and React's Virtual DOM instantly re-renders just the numbers on the screen—resulting in a real-time, lag-free experience.
+
+---
+
+## 2. Technologies Used
+
+- **Frontend:** React (Vite), TailwindCSS, Socket.io-client, Recharts (for run-rate graphs), Canvas-Confetti
+- **Backend:** Node.js, Express.js
+- **Database:** MongoDB (using Mongoose ODM)
+- **Real-Time Communication:** Socket.io
+- **Caching & Performance:** Redis (ioredis)
+- **Authentication & Security:** JWT (JSON Web Tokens), bcryptjs
+
+---
+
+## 3. Deep Dive: Key Concepts & How to Explain Them
+
+### A. Frontend: React Hooks & Effects
+**Interview Question:** *"How did you handle real-time data and component lifecycles in React?"*
+**How to Answer:**
+- **`useState`:** We used it heavily to hold the active match state (score, batsman runs, current bowler). When the socket pushes new data, we update this state, triggering an efficient re-render.
+- **`useEffect`:** Crucial for connecting to WebSockets when a component mounts. Inside `useEffect`, we listen for `socket.on('scoreUpdated')`. **Crucially**, we return a cleanup function (`socket.off`) when the component unmounts to prevent memory leaks and duplicate event listeners.
+- **`useContext`:** Used for global state management, such as the `AuthContext` to keep track of the logged-in user and the `SocketContext` to share the single WebSocket connection across the app without prop drilling.
+
+### B. Backend Flow (Node & Express)
+**Interview Question:** *"Describe your backend architecture."*
+**How to Answer:**
+- We followed a structured MVC-like pattern: `Routes -> Middlewares -> Controllers -> Models`.
+- We specifically used HTTP POST requests for score updates rather than raw WebSockets because HTTP integrates natively with standard JWT middleware for authentication, ensuring only authorized match hosts can update the score.
+
+### C. Authentication (JWT)
+**Interview Question:** *"How is the application secured?"*
+**How to Answer:**
+- Upon login, the backend signs a payload with a `JWT_SECRET` and sends the token back to the client.
+- The client stores this and attaches it as a `Bearer <token>` in the Authorization header.
+- A custom `protect` middleware intercepts requests, verifies the JWT signature, and attaches `req.user`.
+- For specific actions (like scoring), an `isMatchOwner` middleware checks if `req.user._id` matches the `createdBy` field of the match to prevent unauthorized tampering.
+
+### D. Database (MongoDB & Mongoose)
+**Interview Question:** *"How did you model the data, especially for ball-by-ball tracking?"*
+**How to Answer:**
+- We separated concerns: `User`, `Team`, and `Match` (metadata) are separate collections.
+- The heavyweight collection is `ScoreRecord`. Instead of an event-sourcing model where every ball is a new row (which makes fetching the current score slow), we used an **Embedded Snapshot Array**.
+- The root of `ScoreRecord` holds the *current* state (total runs, wickets, active players).
+- Every delivery is appended to an internal `ballByBall` array within that same document.
+- **Concurrency:** To prevent race conditions if two admins click at once, we rely on MongoDB atomic operators like `$inc` and `$push` instead of doing manual read-modify-write loops.
+
+### E. WebSockets (Socket.io)
+**Interview Question:** *"How do you handle real-time updates for thousands of users without overwhelming the server?"*
+**How to Answer:**
+- We utilized Socket.io **Rooms**.
+- When a user views Match ID 123, they `socket.join('match:123')`.
+- This creates an isolated pub/sub channel. When the server broadcasts the score update, it does `io.to('match:123').emit(...)`.
+- This ensures Match A's data isn't broadcasted to Match B's viewers, heavily optimizing bandwidth.
+
+### F. Caching & Optimization (Redis)
+**Interview Question:** *"How did you optimize heavy calculations?"*
+**How to Answer:**
+- For operations like generating a Tournament Points Table, doing a massive database aggregation across 50 completed matches every time a user visits the page is slow.
+- We implemented **Redis (ioredis)**. We calculate the points table once, cache it in Redis with a Time-To-Live (TTL), and serve subsequent requests directly from RAM.
+- We only invalidate or recalculate this cache when a match within that tournament officially ends.
+
+---
+
+## 4. Tough Scenarios to Talk About
+
+- **The "Undo" Feature:** Because we store the `ballByBall` array inside the `ScoreRecord` document, "undoing" a ball simply means `$pop`ping the last array item and subtracting its specific runs/wickets from the root object.
+- **Handling Offline Admins:** Because we use HTTP POST for score updates, if an admin drops offline, the request fails. This prevents out-of-sync socket events firing when they reconnect.
+
+*Use this guide to structure your answers using the STAR method (Situation, Task, Action, Result).*

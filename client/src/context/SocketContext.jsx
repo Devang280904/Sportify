@@ -12,7 +12,8 @@ export const SocketProvider = ({ children }) => {
     // Bypass Vite proxy during development to avoid ECONNABORTED errors, 
     // but use the current hostname to allow other devices on the LAN to connect.
     const isDev = import.meta.env.MODE === 'development';
-    const socketUrl = isDev ? `http://${window.location.hostname}:5001` : '';
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+    const socketUrl = isDev ? `http://${window.location.hostname}:5001` : apiUrl;
     
     const newSocket = io(socketUrl, {
       path: '/socket.io/', // Explicitly defined path

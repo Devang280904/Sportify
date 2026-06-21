@@ -2,6 +2,12 @@ const Redis = require('ioredis');
 
 let redis = null;
 
+// Telemetry Stats
+let stats = {
+  cacheHits: 0,
+  cacheMisses: 0,
+};
+
 const connectRedis = () => {
   try {
     redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -38,8 +44,15 @@ const getCache = async (key) => {
   try {
     if (!redis) return null;
     const data = await redis.get(key);
-    return data ? JSON.parse(data) : null;
+    if (data) {
+      stats.cacheHits++;
+      return JSON.parse(data);
+    } else {
+      stats.cacheMisses++;
+      return null;
+    }
   } catch {
+    stats.cacheMisses++;
     return null;
   }
 };
@@ -62,4 +75,6 @@ const delCache = async (key) => {
   }
 };
 
-module.exports = { connectRedis, getRedis, getCache, setCache, delCache };
+const getRedisStats = () => stats;
+
+module.exports = { connectRedis, getRedis, getCache, setCache, delCache, getRedisStats };

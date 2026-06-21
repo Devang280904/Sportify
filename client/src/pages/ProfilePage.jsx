@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { HiOutlineUser, HiOutlineMail, HiOutlineShieldCheck } from 'react-icons/hi';
+import { HiOutlineUser, HiOutlineMail } from 'react-icons/hi';
 
 const ProfilePage = () => {
   const { user } = useAuth();
@@ -10,11 +10,7 @@ const ProfilePage = () => {
     email: user?.email || '',
   });
 
-  const roleColors = {
-    admin: 'bg-danger/10 text-danger',
-    organizer: 'bg-primary/10 text-primary',
-    viewer: 'bg-secondary/10 text-secondary',
-  };
+
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -25,12 +21,7 @@ const ProfilePage = () => {
         </div>
         <h1 className="text-2xl font-bold text-txt-primary">{user?.name}</h1>
         <p className="text-txt-secondary">{user?.email}</p>
-        <div className="mt-3">
-          <span className={`badge text-sm ${roleColors[user?.role]}`}>
-            <HiOutlineShieldCheck className="mr-1" />
-            {user?.role}
-          </span>
-        </div>
+
       </div>
 
       {/* Profile Details */}
@@ -61,12 +52,7 @@ const ProfilePage = () => {
             </label>
             <p className="text-txt-primary font-medium py-2">{user?.email}</p>
           </div>
-          <div>
-            <label className="label flex items-center gap-1">
-              <HiOutlineShieldCheck className="text-sm" /> Role
-            </label>
-            <p className="text-txt-primary font-medium py-2 capitalize">{user?.role}</p>
-          </div>
+
         </div>
 
         {editing && (

@@ -1,0 +1,94 @@
+# Sportify: The Exact WebSocket Logic Flow
+
+This document explains the complete code execution path of how a score update moves from an admin's click to the viewers' screens using Socket.io in the Sportify codebase. 
+
+---
+
+## Step 1: The Viewer Joins a Match Room
+When a viewer navigates to a match page, the React client automatically emits a socket event to the server to join that specific match's isolated communication room.
+
+**In `server/sockets/scoreSocket.js`:**
+```javascript
+// The server listens for a connection
+io.on('connection', (socket) => {
+  // When the client emits 'joinMatch' with the specific match ID
+  socket.on('joinMatch', (matchId) => {
+    // The server adds this user's socket connection to a specific 'room'
+    socket.join(`match:${matchId}`);
+    console.log(`Socket ${socket.id} joined match:${matchId}`);
+  });
+});
+```
+*Why this matters:* By joining a room named `match:${matchId}`, we ensure that when a score updates in Match A, the server doesn't accidentally broadcast it to people watching Match B.
+
+---
+
+## Step 2: The Admin Updates the Score (HTTP POST)
+When the Admin clicks "4 runs", the React app does **not** send this via WebSockets. Instead, it sends a standard secure HTTP POST request. This is because HTTP requests easily pass through standard JWT authentication middleware, ensuring security.
+
+**In `server/routes/scoreRoutes.js`:**
+```javascript
+// The POST request hits this route
+router.post('/:id/score', protect, isMatchOwner, updateScore);
+```
+- `protect`: Verifies the Admin's JWT token.
+- `isMatchOwner`: Checks if the Admin is authorized to host this specific match.
+- `updateScore`: Forwards the request to the Controller.
+
+---
+
+## Step 3: Controller Updates MongoDB First
+Inside the controller, we must update the database *before* emitting anything to sockets to guarantee data integrity.
+
+**In `server/controllers/scoreController.js` (inside `updateScore`):**
+```javascript
+// 1. Fetch the existing ScoreRecord from MongoDB
+const scoreRecord = await ScoreRecord.findOne({ matchId, teamId });
+
+// 2. Perform all the complex business logic (Adding runs, updating batsman stats, checking over limits)
+// ...
+scoreRecord.ballByBall.push(ballData);
+scoreRecord.runs += totalRunsForBall;
+
+// 3. Save the new state to the database securely
+await scoreRecord.save();
+```
+
+---
+
+## Step 4: Controller Emits the Socket Event
+Now that the database is successfully updated, we broadcast the new score to the viewers. But how does the Express HTTP controller access the Socket.io instance?
+
+In `server.js`, we bound the socket instance to the Express app:
+```javascript
+// In server.js
+app.set('io', io);
+```
+
+**Back in `server/controllers/scoreController.js` (inside `updateScore`):**
+```javascript
+// 4. Retrieve the Socket.io instance from the Express app object
+const io = req.app.get('io');
+
+// 5. Build a clean payload containing the exact new score
+const scoreUpdate = buildScoreBroadcastPayload(matchId, teamId, scoreRecord, {
+  lastBall: ballData,
+});
+
+// 6. Emit the 'scoreUpdated' event ONLY to users sitting in this specific match room
+io.to(`match:${matchId}`).emit('scoreUpdated', scoreUpdate);
+```
+
+---
+
+## Step 5: The Client Reacts (Frontend)
+The React application (the viewer's screen) has a listener hooked up via `SocketContext` or inside the specific `MatchViewer` component.
+
+```javascript
+// Conceptually, on the React Frontend:
+socket.on('scoreUpdated', (newScoreData) => {
+  // Overwrite the old React state with the exact new DB state sent via the socket
+  setMatchData(newScoreData);
+});
+```
+*Result:* Because React uses a Virtual DOM, it immediately notices that the `runs` integer has changed from `15` to `19`. It updates *only* that specific number on the screen without reloading the webpage, achieving a blazing-fast, real-time "vibecoding" experience.

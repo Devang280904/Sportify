@@ -22,7 +22,12 @@ const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
       // Allow relative origins, localhost, and local network IPs
-      const allowedOrigins = [process.env.CLIENT_URL, 'http://localhost:5173', 'http://127.0.0.1:5173'];
+      const allowedOrigins = [
+        process.env.CLIENT_URL, 
+        'http://localhost:5173', 
+        'http://127.0.0.1:5173',
+        'https://sportify-drab.vercel.app'
+      ];
       if (!origin || allowedOrigins.includes(origin) || origin.startsWith('http://192.168.')) {
         callback(null, origin || true);
       } else {
@@ -43,7 +48,12 @@ initializeSocket(io);
 // Middleware
 app.use(cors({
   origin: (origin, callback) => {
-    const allowedOrigins = [process.env.CLIENT_URL, 'http://localhost:5173', 'http://127.0.0.1:5173'];
+    const allowedOrigins = [
+      process.env.CLIENT_URL, 
+      'http://localhost:5173', 
+      'http://127.0.0.1:5173',
+      'https://sportify-drab.vercel.app'
+    ];
     if (!origin || allowedOrigins.includes(origin) || (origin && origin.startsWith('http://192.168.'))) {
       callback(null, origin || true);
     } else {

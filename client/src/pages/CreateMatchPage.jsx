@@ -164,6 +164,7 @@ const CreateMatchPage = () => {
     try {
       const payload = {
         ...form,
+        matchDate: new Date(form.matchDate).toISOString(),
         team1Players: team1.players.length > required ? team1SelectedPlayers : team1.players.map(p => p._id),
         team2Players: team2.players.length > required ? team2SelectedPlayers : team2.players.map(p => p._id),
       };

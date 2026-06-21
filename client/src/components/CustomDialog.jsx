@@ -10,7 +10,8 @@ const CustomDialog = ({
   onConfirm, 
   onCancel, 
   type = 'confirm', // 'confirm', 'alert', 'danger'
-  icon = null
+  icon = null,
+  children
 }) => {
   if (!isOpen) return null;
 
@@ -62,9 +63,11 @@ const CustomDialog = ({
               <h3 className="text-xl font-black text-txt-primary uppercase tracking-tight mb-2">
                 {title}
               </h3>
-              <p className="text-txt-muted text-sm font-medium leading-relaxed">
-                {message}
-              </p>
+              {children ? children : (
+                <p className="text-txt-muted text-sm font-medium leading-relaxed">
+                  {message}
+                </p>
+              )}
             </div>
           </div>
         </div>

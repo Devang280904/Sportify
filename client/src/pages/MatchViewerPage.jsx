@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useSocket } from '../context/SocketContext';
+import { useAuth } from '../context/AuthContext';
 import LiveIndicator from '../components/LiveIndicator';
 import { MdSportsCricket, MdOutlineSportsBaseball, MdEmojiEvents } from 'react-icons/md';
 import { HiOutlineUserGroup, HiOutlineCalendar, HiOutlineLocationMarker } from 'react-icons/hi';
 import VictoryOverlay from '../components/VictoryOverlay';
 import MatchGraphs from '../components/MatchGraphs';
+import CustomDialog from '../components/CustomDialog';
 
 const processInningsBalls = (balls) => {
   let currentOver = 0;
@@ -68,6 +70,7 @@ const MatchViewerPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { socket, joinMatch, leaveMatch } = useSocket();
+  const { user } = useAuth();
   const [match, setMatch] = useState(null);
   const [scores, setScores] = useState([]);
   const [team1Players, setTeam1Players] = useState([]);
@@ -75,6 +78,11 @@ const MatchViewerPage = () => {
   const [activeTab, setActiveTab] = useState('live'); // 'live', 'scorecard', 'graphs', 'squads'
   const [showCelebration, setShowCelebration] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [postponeDate, setPostponeDate] = useState('');
+  const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'confirm', onConfirm: () => {} });
+
+  const isOwner = user?.id?.toString() === (match?.tournamentId?.organizerId?._id || match?.tournamentId?.organizerId)?.toString() ||
+                   user?.id?.toString() === (match?.createdBy?._id || match?.createdBy)?.toString();
 
   useEffect(() => {
     fetchMatch();
@@ -127,6 +135,9 @@ const MatchViewerPage = () => {
       const matchData = res.data.data.match;
       setMatch(matchData);
       setScores(res.data.data.scores);
+      if (matchData.matchDate) {
+        setPostponeDate(new Date(matchData.matchDate).toISOString().slice(0, 16));
+      }
 
       // Fetch squad data for both teams
       const [t1Res, t2Res] = await Promise.all([
@@ -265,7 +276,7 @@ const MatchViewerPage = () => {
 
       {/* Unified Tabs */}
       <div className="flex bg-primary-dark/95 rounded-b-xl border border-t-0 border-white/10 shadow-sm overflow-hidden mb-6">
-        {['live', 'scorecard', 'graphs', 'squads'].map(tab => (
+        {(isOwner ? ['live', 'scorecard', 'graphs', 'squads', 'settings'] : ['live', 'scorecard', 'graphs', 'squads']).map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`flex-1 py-4 px-4 text-[11px] md:text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === tab 
@@ -483,6 +494,116 @@ const MatchViewerPage = () => {
            ))}
         </div>
       )}
+      {activeTab === 'settings' && isOwner && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="card p-6 shadow-xl border-none bg-surface-card">
+            <h3 className="text-sm font-black text-txt-primary mb-4 uppercase tracking-widest border-b border-surface-border pb-4">Match Settings</h3>
+            
+            <div className="space-y-6">
+              {/* Postpone Section */}
+              <div className="bg-surface-alt p-5 rounded-xl border border-surface-border">
+                <h4 className="font-bold text-base text-txt-primary mb-2">Postpone / Reschedule Match</h4>
+                <p className="text-xs text-txt-muted mb-4">You can reschedule this match by selecting a new date and time. This is only available if the match has not started yet.</p>
+                
+                {match.status === 'scheduled' ? (
+                  <div className="flex flex-col sm:flex-row gap-3 items-end">
+                    <div className="flex-1">
+                      <label className="block text-[10px] font-black text-txt-muted uppercase tracking-wider mb-2">New Date & Time</label>
+                      <input
+                        type="datetime-local"
+                        value={postponeDate}
+                        onChange={(e) => setPostponeDate(e.target.value)}
+                        className="w-full bg-white border border-surface-border text-txt-primary rounded-xl px-4 py-3 font-medium outline-none focus:border-primary transition-colors text-sm"
+                      />
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!postponeDate) return;
+                        try {
+                          const res = await api.put(`/matches/${id}`, { matchDate: postponeDate });
+                          setMatch(prev => ({ ...prev, matchDate: res.data.data.matchDate }));
+                          setDialog({
+                            isOpen: true,
+                            title: 'Success',
+                            message: 'Match has been rescheduled successfully.',
+                            type: 'alert',
+                            onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+                          });
+                        } catch (err) {
+                          setDialog({
+                            isOpen: true,
+                            title: 'Error',
+                            message: err.response?.data?.message || 'Failed to reschedule match',
+                            type: 'alert',
+                            onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+                          });
+                        }
+                      }}
+                      className="btn-primary py-3 px-6 h-12 uppercase tracking-widest font-black text-xs shrink-0"
+                    >
+                      Reschedule
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-xs text-danger font-bold">
+                    Rescheduling is not allowed once the match has started or completed.
+                  </div>
+                )}
+              </div>
+
+              {/* Delete Section */}
+              <div className="bg-red-50/50 p-5 rounded-xl border border-red-100">
+                <h4 className="font-bold text-base text-red-700 mb-2">Delete Match</h4>
+                <p className="text-xs text-red-600/70 mb-4">Delete this match permanently. This action cannot be undone and will remove all scoring records.</p>
+                
+                {match.status === 'scheduled' ? (
+                  <button
+                    onClick={() => {
+                      setDialog({
+                        isOpen: true,
+                        title: 'Delete Match?',
+                        message: 'Are you sure you want to delete this match permanently? This action cannot be undone.',
+                        type: 'danger',
+                        onConfirm: async () => {
+                          try {
+                            await api.delete(`/matches/${id}`);
+                            setDialog(prev => ({ ...prev, isOpen: false }));
+                            navigate('/dashboard');
+                          } catch (err) {
+                            setDialog({
+                              isOpen: true,
+                              title: 'Error',
+                              message: err.response?.data?.message || 'Failed to delete match',
+                              type: 'alert',
+                              onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+                            });
+                          }
+                        }
+                      });
+                    }}
+                    className="bg-red-600 hover:bg-red-700 text-white font-black py-3 px-6 rounded-xl uppercase tracking-widest text-xs shadow-lg shadow-red-600/20 transition-all active:scale-95"
+                  >
+                    Delete Match
+                  </button>
+                ) : (
+                  <div className="text-xs text-red-600 font-bold">
+                    Only scheduled matches can be deleted. Live or completed matches cannot be deleted.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <CustomDialog 
+        isOpen={dialog.isOpen}
+        title={dialog.title}
+        message={dialog.message}
+        type={dialog.type}
+        onConfirm={dialog.onConfirm}
+        onCancel={() => setDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

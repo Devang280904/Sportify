@@ -2,7 +2,7 @@ import LiveIndicator from './LiveIndicator';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { HiOutlineTrash } from 'react-icons/hi';
+import { HiOutlineTrash, HiOutlinePencil } from 'react-icons/hi';
 import { useState } from 'react';
 import CustomDialog from './CustomDialog';
 
@@ -10,6 +10,16 @@ const ScoreCard = ({ match, scores, onDelete }) => {
   const { user } = useAuth();
   const [deleting, setDeleting] = useState(false);
   const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'confirm', onConfirm: () => {} });
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [newMatchDate, setNewMatchDate] = useState('');
+  const [updatingTime, setUpdatingTime] = useState(false);
+  const [matchDateState, setMatchDateState] = useState(match.matchDate);
+
+  const isMatchOwner = user && (
+    match.tournamentId 
+      ? (match.tournamentId.organizerId?._id === user._id || match.tournamentId.organizerId === user._id)
+      : (match.createdBy?._id === user._id || match.createdBy === user._id)
+  );
   
   // Use scores from prop (if passed for real-time updates) or from the injected match.scores
   const activeScores = scores && scores.length > 0 ? scores : (match.scores || []);
@@ -36,6 +46,7 @@ const ScoreCard = ({ match, scores, onDelete }) => {
 
   const handleDelete = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setDialog({
       isOpen: true,
       title: 'Delete Match?',
@@ -61,7 +72,29 @@ const ScoreCard = ({ match, scores, onDelete }) => {
       }
     });
   };
-  // hi
+
+  const handleEditTimeSubmit = async () => {
+    setUpdatingTime(true);
+    try {
+      const res = await api.put(`/matches/${match._id}`, { matchDate: newMatchDate });
+      if (res.data && res.data.data) {
+        setMatchDateState(res.data.data.matchDate);
+      } else {
+        setMatchDateState(newMatchDate);
+      }
+      setEditDialogOpen(false);
+    } catch (err) {
+      setDialog({
+        isOpen: true,
+        title: 'Error',
+        message: err.response?.data?.message || 'Failed to update match time',
+        type: 'alert',
+        onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+      });
+    } finally {
+      setUpdatingTime(false);
+    }
+  };
 
   return (
     <Link
@@ -82,8 +115,25 @@ const ScoreCard = ({ match, scores, onDelete }) => {
             <span className="px-2 py-0.5 rounded text-xs font-black uppercase tracking-widest bg-white/5 text-white/40">Completed</span>
           )}
 
-          {/* Delete Button - Only for Scheduled Matches */}
-          {user && match.status === 'scheduled' && (
+          {/* Edit Timing Button - Only for Scheduled Matches and Creator/Organizer */}
+          {isMatchOwner && match.status === 'scheduled' && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setNewMatchDate(new Date(matchDateState).toISOString().slice(0, 16));
+                setEditDialogOpen(true);
+              }}
+              disabled={updatingTime}
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-secondary hover:bg-secondary/10 p-1.5 rounded-lg ml-1 z-10 relative"
+              title="Edit match timing"
+            >
+              <HiOutlinePencil className="text-sm" />
+            </button>
+          )}
+
+          {/* Delete Button - Only for Scheduled Matches and Creator/Organizer */}
+          {isMatchOwner && match.status === 'scheduled' && (
             <button
               onClick={handleDelete}
               disabled={deleting}
@@ -146,7 +196,7 @@ const ScoreCard = ({ match, scores, onDelete }) => {
            <p className="text-accent text-xs font-black uppercase tracking-widest animate-pulse">Match is in progress</p>
          ) : (
            <p className="text-white/40 text-xs font-black uppercase tracking-widest">
-             {new Date(match.matchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • {new Date(match.matchDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+             {new Date(matchDateState).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • {new Date(matchDateState).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
            </p>
          )}
       </div>
@@ -159,6 +209,28 @@ const ScoreCard = ({ match, scores, onDelete }) => {
         onConfirm={dialog.onConfirm}
         onCancel={() => setDialog(prev => ({ ...prev, isOpen: false }))}
       />
+
+      <CustomDialog 
+        isOpen={editDialogOpen}
+        title="Edit Match Timing"
+        confirmLabel={updatingTime ? 'Updating...' : 'Update'}
+        cancelLabel="Cancel"
+        onConfirm={handleEditTimeSubmit}
+        onCancel={() => setEditDialogOpen(false)}
+      >
+        <div className="mt-3">
+          <label className="block text-xs font-bold text-txt-muted uppercase tracking-wider mb-2">
+            New Match Date & Time
+          </label>
+          <input
+            type="datetime-local"
+            value={newMatchDate}
+            onChange={(e) => setNewMatchDate(e.target.value)}
+            disabled={updatingTime}
+            className="w-full bg-surface-alt border border-surface-border text-txt-primary rounded-xl px-4 py-3 font-medium outline-none focus:border-primary transition-colors text-sm"
+          />
+        </div>
+      </CustomDialog>
     </Link>
   );
 };

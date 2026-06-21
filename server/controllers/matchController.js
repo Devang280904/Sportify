@@ -284,6 +284,18 @@ exports.updateMatch = async (req, res) => {
       });
     }
 
+    if (req.body.matchDate) {
+      const matchTime = new Date(req.body.matchDate).getTime();
+      const currentTime = Date.now() - (5 * 60 * 1000); 
+
+      if (matchTime < currentTime) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid match schedule. Match time must be current or future.' 
+        });
+      }
+    }
+
     const updatedMatch = await Match.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,

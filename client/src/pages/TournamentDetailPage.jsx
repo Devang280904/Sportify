@@ -31,7 +31,7 @@ const TournamentDetailPage = () => {
   const [dialog, setDialog] = useState({ isOpen: false, title: '', message: '', type: 'confirm', onConfirm: () => {} });
 
   // Edit Tournament States
-  const [showEditTournament, setShowEditTournament] = useState(false);
+  const [activeTab, setActiveTab] = useState('teams'); // 'teams', 'matches', 'settings'
   const [editForm, setEditForm] = useState({ name: '', startDate: '', endDate: '', playersPerTeam: 11, defaultOvers: 20 });
 
   useEffect(() => {
@@ -51,6 +51,13 @@ const TournamentDetailPage = () => {
       
       setTournament(tournamentData);
       setMatches(mRes.data.data);
+      setEditForm({
+        name: tournamentData.name || '',
+        startDate: tournamentData.startDate ? tournamentData.startDate.slice(0, 10) : '',
+        endDate: tournamentData.endDate ? tournamentData.endDate.slice(0, 10) : '',
+        playersPerTeam: tournamentData.playersPerTeam || 11,
+        defaultOvers: tournamentData.defaultOvers || 20
+      });
     } catch (err) {
       console.error(err);
     } finally {
@@ -268,24 +275,6 @@ const TournamentDetailPage = () => {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-txt-primary">{tournament.name}</h1>
-              {isOrganizer && (
-                <button 
-                  onClick={() => { 
-                    setShowEditTournament(true); 
-                    setEditForm({ 
-                      name: tournament.name, 
-                      startDate: tournament.startDate.slice(0, 10), 
-                      endDate: tournament.endDate.slice(0, 10),
-                      playersPerTeam: tournament.playersPerTeam || 11,
-                      defaultOvers: tournament.defaultOvers || 20
-                    }); 
-                  }}
-                  className="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-all"
-                  title="Edit Tournament"
-                >
-                  <HiOutlinePencil className="text-sm" />
-                </button>
-              )}
             </div>
             <p className="text-sm text-txt-muted mt-1">created by: <span className="font-semibold">{tournament.organizerId?.name}</span></p>
             <div className="flex items-center gap-4 mt-2 text-sm text-txt-secondary">
@@ -309,221 +298,239 @@ const TournamentDetailPage = () => {
         </div>
       </div>
 
-      {/* Teams */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-txt-primary">Teams</h2>
-          <div className="flex items-center gap-2">
-            {isOrganizer && (
-              <button 
-                onClick={handleOpenAddTeam} 
-                disabled={isTournamentFinished}
-                className={`inline-flex items-center space-x-2 text-sm ${
-                  isTournamentFinished 
-                    ? 'btn-primary opacity-50 cursor-not-allowed' 
-                    : 'btn-primary'
-                }`}
-                title={isTournamentFinished ? 'Cannot add teams to finished tournaments' : ''}
-              >
-                <HiOutlinePlus /> <span>Add Team</span>
-              </button>
-            )}
-            {isOrganizer && (
-              <Link 
-                to={`/teams?tournamentId=${id}`} 
-                className={`text-sm ${
-                  isTournamentFinished 
-                    ? 'btn-outline opacity-50 pointer-events-none' 
-                    : 'btn-outline'
-                }`}
-                onClick={isTournamentFinished ? (e) => e.preventDefault() : undefined}
-                title={isTournamentFinished ? 'Cannot manage teams in finished tournaments' : ''}
-              >
-                Manage Teams
-              </Link>
-            )}
-          </div>
-        </div>
-        {tournament.teams?.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {tournament.teams.map(team => (
-              <div key={team._id} className="relative group/team-card">
-                <Link to={`/teams/${team._id}`} className="card hover:shadow-card-lg block animate-slide-up h-full">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                      {team.teamName?.charAt(0)}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-txt-primary group-hover:text-primary">{team.teamName}</h3>
-                      <p className="text-xs text-txt-muted">{team.players?.length || 0} players</p>
-                    </div>
-                  </div>
-                </Link>
-                {isOrganizer && !isTournamentFinished && (
-                  <button 
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleRemoveTeam(team._id, team.teamName);
-                    }}
-                    className="absolute top-2 right-2 p-1.5 opacity-0 group-hover/team-card:opacity-100 transition-opacity bg-danger/10 text-danger hover:bg-danger hover:text-white rounded-lg"
-                    title="Remove Team"
-                  >
-                    <HiOutlineX className="text-sm" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="card text-center py-8">
-            <div className="w-16 h-16 rounded-full bg-primary/5 flex items-center justify-center mx-auto mb-3">
-              <HiOutlineUserGroup className="text-3xl text-primary/40" />
-            </div>
-            <p className="text-txt-muted mb-3">No teams registered yet.</p>
-            {isOrganizer && !isTournamentFinished && (
-              <button onClick={handleOpenAddTeam} className="btn-primary inline-flex items-center space-x-2 text-sm mx-auto">
-                <HiOutlinePlus /> <span>Add Your First Team</span>
-              </button>
-            )}
-          </div>
-        )}
+      {/* Tabs */}
+      <div className="flex bg-white rounded-xl border border-surface-border shadow-sm overflow-hidden mb-6">
+        {(isOrganizer ? ['teams', 'matches', 'settings'] : ['teams', 'matches']).map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-4 px-4 text-xs font-black uppercase tracking-widest transition-all border-b-3 ${
+              activeTab === tab 
+                ? 'text-primary border-primary bg-primary/5' 
+                : 'text-txt-muted hover:text-txt-primary hover:bg-surface border-transparent'
+            }`}>
+            {tab}
+          </button>
+        ))}
       </div>
+
+      {/* Teams */}
+      {activeTab === 'teams' && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-txt-primary">Teams</h2>
+            <div className="flex items-center gap-2">
+              {isOrganizer && (
+                <button 
+                  onClick={handleOpenAddTeam} 
+                  disabled={isTournamentFinished}
+                  className={`inline-flex items-center space-x-2 text-sm ${
+                    isTournamentFinished 
+                      ? 'btn-primary opacity-50 cursor-not-allowed' 
+                      : 'btn-primary'
+                  }`}
+                  title={isTournamentFinished ? 'Cannot add teams to finished tournaments' : ''}
+                >
+                  <HiOutlinePlus /> <span>Add Team</span>
+                </button>
+              )}
+              {isOrganizer && (
+                <Link 
+                  to={`/teams?tournamentId=${id}`} 
+                  className={`text-sm ${
+                    isTournamentFinished 
+                      ? 'btn-outline opacity-50 pointer-events-none' 
+                      : 'btn-outline'
+                  }`}
+                  onClick={isTournamentFinished ? (e) => e.preventDefault() : undefined}
+                  title={isTournamentFinished ? 'Cannot manage teams in finished tournaments' : ''}
+                >
+                  Manage Teams
+                </Link>
+              )}
+            </div>
+          </div>
+          {tournament.teams?.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {tournament.teams.map(team => (
+                <div key={team._id} className="relative group/team-card">
+                  <Link to={`/teams/${team._id}`} className="card hover:shadow-card-lg block animate-slide-up h-full">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                        {team.teamName?.charAt(0)}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-txt-primary group-hover:text-primary">{team.teamName}</h3>
+                        <p className="text-xs text-txt-muted">{team.players?.length || 0} players</p>
+                      </div>
+                    </div>
+                  </Link>
+                  {isOrganizer && !isTournamentFinished && (
+                    <button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleRemoveTeam(team._id, team.teamName);
+                      }}
+                      className="absolute top-2 right-2 p-1.5 opacity-0 group-hover/team-card:opacity-100 transition-opacity bg-danger/10 text-danger hover:bg-danger hover:text-white rounded-lg"
+                      title="Remove Team"
+                    >
+                      <HiOutlineX className="text-sm" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="card text-center py-8">
+              <div className="w-16 h-16 rounded-full bg-primary/5 flex items-center justify-center mx-auto mb-3">
+                <HiOutlineUserGroup className="text-3xl text-primary/40" />
+              </div>
+              <p className="text-txt-muted mb-3">No teams registered yet.</p>
+              {isOrganizer && !isTournamentFinished && (
+                <button onClick={handleOpenAddTeam} className="btn-primary inline-flex items-center space-x-2 text-sm mx-auto">
+                  <HiOutlinePlus /> <span>Add Your First Team</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Matches */}
-      <div>
-        <h2 className="text-lg font-bold text-txt-primary mb-4">Matches</h2>
-        {matches.length > 0 ? (
-          <div className="relative mt-6">
-            {/* Vertical Timeline Line */}
-            <div className="hidden md:block absolute left-[140px] top-6 bottom-0 w-px border-l border-dashed border-txt-muted/30"></div>
+      {activeTab === 'matches' && (
+        <div>
+          <h2 className="text-lg font-bold text-txt-primary mb-4">Matches</h2>
+          {matches.length > 0 ? (
+            <div className="relative mt-6">
+              {/* Vertical Timeline Line */}
+              <div className="hidden md:block absolute left-[140px] top-6 bottom-0 w-px border-l border-dashed border-txt-muted/30"></div>
 
-            <div className="space-y-6">
-              {matches.map((match, idx) => {
-                const matchDate = new Date(match.matchDate);
-                const hour = matchDate.getHours();
-                const isDay = hour >= 6 && hour < 18;
-                const timeString = matchDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+              <div className="space-y-6">
+                {matches.map((match, idx) => {
+                  const matchDate = new Date(match.matchDate);
+                  const hour = matchDate.getHours();
+                  const isDay = hour >= 6 && hour < 18;
+                  const timeString = matchDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
-                const team1Score = match.scores?.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id)?.toString());
-                const team2Score = match.scores?.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id)?.toString());
+                  const team1Score = match.scores?.find(s => s.teamId?.toString() === (match.team1Id?._id || match.team1Id)?.toString());
+                  const team2Score = match.scores?.find(s => s.teamId?.toString() === (match.team2Id?._id || match.team2Id)?.toString());
 
-                return (
-                  <div key={match._id} className="relative flex flex-col md:flex-row gap-4 md:items-stretch group animate-slide-up">
-                    {/* Left Side: Timeline & Dates */}
-                    <div className="md:w-[140px] flex-shrink-0 flex flex-col items-start pt-5 relative md:pr-6 z-10">
-                      {/* Horizontal connector & dot (Desktop only) */}
-                      <div className="hidden md:flex absolute top-[30px] -right-[6px] items-center">
-                        <div className="w-12 border-t border-accent/40 mr-1 hidden lg:block"></div>
-                        <div className="w-8 border-t border-accent/40 mr-1 lg:hidden"></div>
-                        <div className="w-[11px] h-[11px] rounded-full bg-accent border-[3px] border-surface"></div>
-                      </div>
-
-                      <div className="border border-accent/40 text-accent text-[10px] font-bold px-2 py-0.5 rounded-sm tracking-widest mb-3 bg-surface z-10 relative">
-                        MATCH {idx + 1}
-                        <div className="hidden md:block absolute top-[9px] -right-12 lg:-right-16 w-12 lg:w-16 border-t border-accent/40 -z-10"></div>
-                      </div>
-                      
-                      <h3 className="text-base font-black text-txt-primary uppercase tracking-tight">
-                        {matchDate.toLocaleDateString('en-US', { month: 'short' })}, {matchDate.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })}
-                      </h3>
-                      
-                      <div className="flex items-center gap-1.5 text-xs text-txt-muted mt-1 font-medium">
-                        {isDay ? <HiOutlineSun className="text-sm" /> : <HiOutlineMoon className="text-sm" />}
-                        {timeString}
-                      </div>
-
-                      <div className="text-[9px] text-txt-muted/70 mt-3 truncate w-full font-medium">
-                        by {match.createdBy?.name || tournament.organizerId?.name || 'N/A'}
-                      </div>
-                    </div>
-
-                    {/* Right Side: Match Card */}
-                    <div className="flex-1 w-full bg-surface-card border border-surface-border rounded-xl overflow-hidden hover:shadow-card-lg transition-all group-hover:border-primary/20">
-                      <Link to={match.status === 'live' ? `/match/${match._id}/view` : `/match/${match._id}`} className="block p-5 sm:p-6">
-                        {/* Top row: Venue + Status */}
-                        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                          <span className="text-[13px] text-txt-secondary font-medium">
-                            {match.venue ? match.venue : 'Venue TBA'}
-                          </span>
-                          {match.status === 'live' ? <LiveIndicator /> : (
-                            <span className={`badge-${match.status === 'completed' ? 'completed' : 'scheduled'} text-[10px] scale-90 origin-right`}>{match.status === 'completed' ? 'completed' : 'scheduled'}</span>
-                          )}
+                  return (
+                    <div key={match._id} className="relative flex flex-col md:flex-row gap-4 md:items-stretch group animate-slide-up">
+                      {/* Left Side: Timeline & Dates */}
+                      <div className="md:w-[140px] flex-shrink-0 flex flex-col items-start pt-5 relative md:pr-6 z-10">
+                        {/* Horizontal connector & dot (Desktop only) */}
+                        <div className="hidden md:flex absolute top-[30px] -right-[6px] items-center">
+                          <div className="w-12 border-t border-accent/40 mr-1 hidden lg:block"></div>
+                          <div className="w-8 border-t border-accent/40 mr-1 lg:hidden"></div>
+                          <div className="w-[11px] h-[11px] rounded-full bg-accent border-[3px] border-surface"></div>
                         </div>
 
-                        {/* Teams row */}
-                        <div className="flex items-center justify-between">
-                          {/* Team 1 */}
-                          <div className="flex items-center gap-x-3 sm:gap-x-4 flex-1">
-                            {match.team1Id?.logoURL ? (
-                              <img src={match.team1Id.logoURL} alt={match.team1Id.teamName} className="w-10 h-10 sm:w-12 sm:h-12 object-contain bg-white rounded-full p-1 border border-surface-border shadow-sm shrink-0" />
-                            ) : (
-                              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-base sm:text-lg border border-primary/20 shrink-0">
-                                {match.team1Id?.teamName?.charAt(0)}
-                              </div>
-                            )}
-                            <span className="font-bold text-txt-primary hidden sm:block truncate pr-2">{match.team1Id?.teamName}</span>
-                            <span className="font-bold text-[13px] text-txt-primary sm:hidden truncate">{match.team1Id?.teamName?.substring(0, 3).toUpperCase()}</span>
-                          </div>
-
-                          {/* Center Area: Scores or VS */}
-                          {match.status === 'scheduled' || !match.scores || match.scores.length === 0 ? (
-                            <div className="font-black italic text-surface-border text-xl sm:text-2xl px-2 sm:px-4 opacity-50 select-none">
-                              V/S
-                            </div>
-                          ) : (
-                            <div className="flex flex-col items-center justify-center px-1 sm:px-4 shrink-0">
-                              <div className="flex items-center gap-3 sm:gap-6">
-                                <div className="text-center">
-                                  <div className="font-black text-xl sm:text-3xl tracking-tight text-txt-primary">
-                                    {team1Score?.runs || 0}<span className="text-lg sm:text-2xl text-txt-muted/70">/{team1Score?.wickets || 0}</span>
-                                  </div>
-                                  <div className="text-[9px] sm:text-[10px] text-txt-muted font-bold tracking-widest mt-0.5">({team1Score?.overs || 0} OV)</div>
-                                </div>
-                                <div className="font-black italic text-surface-border/40 text-sm sm:text-lg select-none">-</div>
-                                <div className="text-center">
-                                  <div className="font-black text-xl sm:text-3xl tracking-tight text-txt-primary">
-                                    {team2Score?.runs || 0}<span className="text-lg sm:text-2xl text-txt-muted/70">/{team2Score?.wickets || 0}</span>
-                                  </div>
-                                  <div className="text-[9px] sm:text-[10px] text-txt-muted font-bold tracking-widest mt-0.5">({team2Score?.overs || 0} OV)</div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Team 2 */}
-                          <div className="flex items-center gap-x-3 sm:gap-x-4 flex-1 justify-end">
-                            <span className="font-bold text-txt-primary hidden sm:block truncate pl-2 text-right">{match.team2Id?.teamName}</span>
-                            <span className="font-bold text-[13px] text-txt-primary sm:hidden truncate text-right">{match.team2Id?.teamName?.substring(0, 3).toUpperCase()}</span>
-                            
-                            {match.team2Id?.logoURL ? (
-                              <img src={match.team2Id.logoURL} alt={match.team2Id.teamName} className="w-10 h-10 sm:w-12 sm:h-12 object-contain bg-white rounded-full p-1 border border-surface-border shadow-sm shrink-0" />
-                            ) : (
-                              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-secondary/10 flex items-center justify-center text-secondary font-bold text-base sm:text-lg border border-secondary/20 shrink-0">
-                                {match.team2Id?.teamName?.charAt(0)}
-                              </div>
-                            )}
-                          </div>
+                        <div className="border border-accent/40 text-accent text-[10px] font-bold px-2 py-0.5 rounded-sm tracking-widest mb-3 bg-surface z-10 relative">
+                          MATCH {idx + 1}
+                          <div className="hidden md:block absolute top-[9px] -right-12 lg:-right-16 w-12 lg:w-16 border-t border-accent/40 -z-10"></div>
+                        </div>
+                        
+                        <h3 className="text-base font-black text-txt-primary uppercase tracking-tight">
+                          {matchDate.toLocaleDateString('en-US', { month: 'short' })}, {matchDate.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })}
+                        </h3>
+                        
+                        <div className="flex items-center gap-1.5 text-xs text-txt-muted mt-1 font-medium">
+                          {isDay ? <HiOutlineSun className="text-sm" /> : <HiOutlineMoon className="text-sm" />}
+                          {timeString}
                         </div>
 
-                        {/* Result summary */}
-                        {match.resultMessage && (
-                          <div className="mt-5 pt-3 border-t border-surface-border/30 text-center">
-                            <span className="text-[11px] font-black uppercase tracking-widest text-[#00cfa7]">{match.resultMessage}</span>
+                        <div className="text-[9px] text-txt-muted/70 mt-3 truncate w-full font-medium">
+                          by {match.createdBy?.name || tournament.organizerId?.name || 'N/A'}
+                        </div>
+                      </div>
+
+                      {/* Right Side: Match Card */}
+                      <div className="flex-1 w-full bg-surface-card border border-surface-border rounded-xl overflow-hidden hover:shadow-card-lg transition-all group-hover:border-primary/20">
+                        <Link to={match.status === 'live' ? `/match/${match._id}/view` : `/match/${match._id}`} className="block p-5 sm:p-6">
+                          {/* Top row: Venue + Status */}
+                          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                            <span className="text-[13px] text-txt-secondary font-medium">
+                              {match.venue ? match.venue : 'Venue TBA'}
+                            </span>
+                            {match.status === 'live' ? <LiveIndicator /> : (
+                              <span className={`badge-${match.status === 'completed' ? 'completed' : 'scheduled'} text-[10px] scale-90 origin-right`}>{match.status === 'completed' ? 'completed' : 'scheduled'}</span>
+                            )}
                           </div>
-                        )}
-                      </Link>
+
+                          {/* Teams row */}
+                          <div className="flex items-center justify-between">
+                            {/* Team 1 */}
+                            <div className="flex items-center gap-x-3 sm:gap-x-4 flex-1">
+                              {match.team1Id?.logoURL ? (
+                                <img src={match.team1Id.logoURL} alt={match.team1Id.teamName} className="w-10 h-10 sm:w-12 sm:h-12 object-contain bg-white rounded-full p-1 border border-surface-border shadow-sm shrink-0" />
+                              ) : (
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-base sm:text-lg border border-primary/20 shrink-0">
+                                  {match.team1Id?.teamName?.charAt(0)}
+                                </div>
+                              )}
+                              <span className="font-bold text-txt-primary hidden sm:block truncate pr-2">{match.team1Id?.teamName}</span>
+                              <span className="font-bold text-[13px] text-txt-primary sm:hidden truncate">{match.team1Id?.teamName?.substring(0, 3).toUpperCase()}</span>
+                            </div>
+
+                            {/* Center Area: Scores or VS */}
+                            {match.status === 'scheduled' || !match.scores || match.scores.length === 0 ? (
+                              <div className="font-black italic text-surface-border text-xl sm:text-2xl px-2 sm:px-4 opacity-50 select-none">
+                                V/S
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center justify-center px-1 sm:px-4 shrink-0">
+                                <div className="flex items-center gap-3 sm:gap-6">
+                                  <div className="text-center">
+                                    <div className="font-black text-xl sm:text-3xl tracking-tight text-txt-primary">
+                                      {team1Score?.runs || 0}<span className="text-lg sm:text-2xl text-txt-muted/70">/{team1Score?.wickets || 0}</span>
+                                    </div>
+                                    <div className="text-[9px] sm:text-[10px] text-txt-muted font-bold tracking-widest mt-0.5">({team1Score?.overs || 0} OV)</div>
+                                  </div>
+                                  <div className="font-black italic text-surface-border/40 text-sm sm:text-lg select-none">-</div>
+                                  <div className="text-center">
+                                    <div className="font-black text-xl sm:text-3xl tracking-tight text-txt-primary">
+                                      {team2Score?.runs || 0}<span className="text-lg sm:text-2xl text-txt-muted/70">/{team2Score?.wickets || 0}</span>
+                                    </div>
+                                    <div className="text-[9px] sm:text-[10px] text-txt-muted font-bold tracking-widest mt-0.5">({team2Score?.overs || 0} OV)</div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Team 2 */}
+                            <div className="flex items-center gap-x-3 sm:gap-x-4 flex-1 justify-end">
+                              <span className="font-bold text-txt-primary hidden sm:block truncate pl-2 text-right">{match.team2Id?.teamName}</span>
+                              <span className="font-bold text-[13px] text-txt-primary sm:hidden truncate text-right">{match.team2Id?.teamName?.substring(0, 3).toUpperCase()}</span>
+                              
+                              {match.team2Id?.logoURL ? (
+                                <img src={match.team2Id.logoURL} alt={match.team2Id.teamName} className="w-10 h-10 sm:w-12 sm:h-12 object-contain bg-white rounded-full p-1 border border-surface-border shadow-sm shrink-0" />
+                              ) : (
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-secondary/10 flex items-center justify-center text-secondary font-bold text-base sm:text-lg border border-secondary/20 shrink-0">
+                                  {match.team2Id?.teamName?.charAt(0)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Result summary */}
+                          {match.resultMessage && (
+                            <div className="mt-5 pt-3 border-t border-surface-border/30 text-center">
+                              <span className="text-[11px] font-black uppercase tracking-widest text-[#00cfa7]">{match.resultMessage}</span>
+                            </div>
+                          )}
+                        </Link>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="card text-center py-8 border-dashed border-surface-border bg-surface/30">
-            <p className="text-txt-muted">No matches scheduled yet.</p>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="card text-center py-8 border-dashed border-surface-border bg-surface/30">
+              <p className="text-txt-muted">No matches scheduled yet.</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ===== ADD TEAM MODAL ===== */}
       {showAddTeam && (
@@ -706,35 +713,13 @@ const TournamentDetailPage = () => {
         </div>
       )}
 
-      {/* Delete Tournament Section - Only for Organizer */}
-      {isOrganizer && (
-        <div className="card border border-danger/20 bg-danger/5 p-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="font-semibold text-danger mb-1">Danger Zone</h3>
-              <p className="text-sm text-txt-secondary">Delete this tournament and all associated data</p>
-            </div>
-            <button 
-              onClick={handleDeleteTournament}
-              className="btn-danger inline-flex items-center space-x-2 text-sm"
-            >
-              <HiOutlineTrash /> <span>Delete Tournament</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Tournament Modal */}
-      {showEditTournament && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-slide-up">
-            <div className="flex items-center justify-between p-6">
-              <h2 className="text-xl font-black text-txt-primary uppercase tracking-tight">Edit Tournament</h2>
-              <button onClick={() => setShowEditTournament(false)} className="p-1.5 hover:bg-surface rounded-lg transition-colors">
-                <HiOutlineX className="text-xl text-txt-muted" />
-              </button>
-            </div>
-            <form onSubmit={handleUpdateTournament} className="px-6 pb-6 space-y-4">
+      {activeTab === 'settings' && isOrganizer && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Edit Form */}
+          <div className="card shadow-xl border-none bg-white p-6">
+            <h3 className="text-sm font-black text-txt-primary mb-4 uppercase tracking-widest border-b border-surface-border pb-4">Tournament Management</h3>
+            
+            <form onSubmit={handleUpdateTournament} className="space-y-4 mt-4">
               <div>
                 <label className="label">Tournament Name</label>
                 <input
@@ -787,15 +772,29 @@ const TournamentDetailPage = () => {
                   />
                 </div>
               </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowEditTournament(false)} className="btn-outline flex-1 py-3 text-sm font-bold">
-                  Cancel
-                </button>
-                <button type="submit" disabled={saving} className="btn-primary flex-1 py-3 text-sm font-black uppercase tracking-widest shadow-lg shadow-primary/20">
+              <div className="pt-2 flex justify-end">
+                <button type="submit" disabled={saving} className="btn-primary py-3 px-8 text-sm font-black uppercase tracking-widest shadow-lg shadow-primary/20">
                   {saving ? 'Updating...' : 'Save Changes'}
                 </button>
               </div>
             </form>
+          </div>
+
+          {/* Delete Tournament Card */}
+          <div className="card border border-danger/20 bg-danger/5 p-6 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h3 className="font-semibold text-danger mb-1">Danger Zone</h3>
+                <p className="text-sm text-txt-secondary">Delete this tournament permanently. This will remove all associated matches, teams, and scores. This cannot be undone.</p>
+              </div>
+              <button 
+                onClick={handleDeleteTournament}
+                disabled={deleteSaving}
+                className="btn-danger inline-flex items-center space-x-2 text-sm shrink-0 self-start sm:self-center"
+              >
+                <HiOutlineTrash /> <span>Delete Tournament</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
